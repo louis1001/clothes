@@ -9,6 +9,16 @@ pub enum TwoBitPixel {
     One
 }
 
+impl From<bool> for TwoBitPixel {
+    fn from(value: bool) -> Self {
+        if value {
+            TwoBitPixel::One
+        } else {
+            TwoBitPixel::Zero
+        }
+    }
+}
+
 pub struct Canvas<Content: Default + Clone> {
     size: Size,
     contents: Vec<Content>
@@ -70,15 +80,15 @@ impl<Content: Default + Clone> Canvas<Content> {
         Some(&self.contents[index])
     }
 
-    pub fn write(&mut self, content: &Content, x: usize, y: usize) {
+    pub fn write<C: Clone>(&mut self, content: &C, x: usize, y: usize) where Content: From<C> {
         if x >= self.size.width || y >= self.size.height { return; }
 
         let index = y * self.size.width + x;
-
-        self.contents[index] = content.clone();
+        
+        self.contents[index] = content.clone().into();
     }
 
-    pub fn draw_rect(&mut self, bounds: &Rect, content: &Content) {
+    pub fn draw_rect<C: Clone>(&mut self, bounds: &Rect, content: &C) where Content: From<C>  {
         for x in bounds.x..(bounds.x + bounds.width as i64) {
             for y in bounds.y..(bounds.y + bounds.height as i64) {
                 if x < 0 || x >= self.size.width as i64 { continue; }
@@ -105,7 +115,7 @@ impl<Content: Default + Clone> Canvas<Content> {
         }
     }
 
-    pub fn clear_with(&mut self, content: &Content) {
+    pub fn clear_with<C: Clone>(&mut self, content: &C) where Content: From<C>  {
         self.draw_rect(&Rect::from_size(&self.size), content);
     }
 }
