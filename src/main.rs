@@ -1,9 +1,21 @@
-use clothes::{graphics::{canvas::Canvas, pixel::{RGBPixel, TwoBitPixel}}, layout::geometry::Rect};
+use std::io::Write;
 
-fn main() {
-    let mut canvas: Canvas<RGBPixel> = Canvas::create(10, 5);
+use clothes::{
+    graphics::{canvas::Canvas, pixel::TwoBitPixel},
+    layout::geometry::Rect,
+    output::ppm_output::PpmOutput,
+};
 
-    canvas.clear_with(&RGBPixel::default());
+fn main() -> std::io::Result<()> {
+    let mut canvas: Canvas<TwoBitPixel> = Canvas::create(100, 100);
 
-    canvas.draw_rect(&Rect::new(1, 1, 8, 3), &TwoBitPixel::One);
+    canvas.clear_with(&TwoBitPixel::default());
+    canvas.draw_rect(&Rect::new(40, 40, 20, 20), &TwoBitPixel::One);
+
+    let image = canvas.output();
+    let mut file = std::fs::File::create("./output.pgm")?;
+
+    file.write_all(image.as_bytes())?;
+
+    Ok(())
 }

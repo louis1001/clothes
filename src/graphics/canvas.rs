@@ -1,9 +1,7 @@
-use crate::layout;
-
-use layout::geometry::{Rect, Size};
+use crate::layout::geometry::{Rect, Size};
 
 pub struct Canvas<Content: Default + Clone> {
-    size: Size,
+    pub(crate) size: Size,
     contents: Vec<Content>
 }
 
@@ -43,17 +41,7 @@ impl<Content: Default + Clone> Canvas<Content> {
 }
 
 impl<Content: Default + Clone> Canvas<Content> {
-    pub fn width(&self) -> usize {
-        self.size.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.size.height
-    }
-}
-
-impl<Content: Default + Clone> Canvas<Content> {
-    pub fn get_at(&self, x: usize, y: usize) -> Option<&Content> {
+    pub(crate) fn get_at(&self, x: usize, y: usize) -> Option<&Content> {
         if x >= self.size.width || y >= self.size.height {
             return None;
         }
