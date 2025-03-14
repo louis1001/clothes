@@ -2,23 +2,6 @@ use crate::layout;
 
 use layout::geometry::{Rect, Size};
 
-#[derive(Default, Clone)]
-pub enum TwoBitPixel {
-    #[default]
-    Zero,
-    One
-}
-
-impl From<bool> for TwoBitPixel {
-    fn from(value: bool) -> Self {
-        if value {
-            TwoBitPixel::One
-        } else {
-            TwoBitPixel::Zero
-        }
-    }
-}
-
 pub struct Canvas<Content: Default + Clone> {
     size: Size,
     contents: Vec<Content>
