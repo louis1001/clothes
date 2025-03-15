@@ -24,14 +24,14 @@ pub enum Edge {
 
 impl Edge {
     pub fn all() -> HashSet<Edge> {
-        hash_set!(Edge::Top, Edge::Right, Edge::Bottom, Edge::Left)
+        dictionary!(Edge::Top, Edge::Right, Edge::Bottom, Edge::Left)
     }
 
     pub fn horizontal() -> HashSet<Edge> {
-        hash_set!(Edge::Right, Edge::Left)
+        dictionary!(Edge::Right, Edge::Left)
     }
 
     pub fn vertical() -> HashSet<Edge> {
-        hash_set!(Edge::Top, Edge::Bottom)
+        dictionary!(Edge::Top, Edge::Bottom)
     }
 }
