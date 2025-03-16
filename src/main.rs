@@ -10,31 +10,39 @@ fn main() -> std::io::Result<()> {
     let canvas_size = 100;
     let mut canvas= Canvas::create(canvas_size, canvas_size);
     
-    use TwoBitPixel::*;
-    
-    let bitmap = vec![
-        None, Some(One), None,
-        Some(One), None, Some(One),
-        None, Some(One), None,
-    ];
+    let square_size = 35;
+
+    let square_origin_y = (canvas_size/2 - square_size/2) as i64;
+    let square_origin_x = square_origin_y - 5;
+
+    let border_width = 1;
 
     let commands = vec![
         DrawCommand::StrokeRect(
             Rect::new(
-                20, 20,
-                40, 40
+                square_origin_x,
+                square_origin_y,
+                square_size, square_size
             ),
-            2, true.into()
+            border_width as usize, true.into()
         ),
-        DrawCommand::Bitmap(bitmap, Rect::new(2, 2, 3, 3)),
         DrawCommand::TextLine(
             Rect::new(
-                canvas_size as i64 - 60,
-                canvas_size as i64 - 10,
-                100, 5
+                square_origin_x + (border_width+2),
+                square_origin_y + (border_width+2),
+                100, 3
             ),
-            "hello, world...".to_string(),
+            "\"Pixel perfect\"".to_string(),
             TwoBitPixel::One
+        ),
+        DrawCommand::FillRect(
+            Rect::new(canvas_size as i64 - 31, canvas_size as i64 - 5, 31, 5),
+            TwoBitPixel::One
+        ),
+        DrawCommand::TextLine(
+            Rect::new(canvas_size as i64 - 30, canvas_size as i64 - 4, 30, 3),
+            "08:06 PM".to_string(),
+            TwoBitPixel::Zero
         )
     ];
 
