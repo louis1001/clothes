@@ -38,6 +38,10 @@ impl<Content: Default + Clone> Canvas<Content> {
             ]
         }
     }
+
+    pub fn bounds(&self) -> Rect {
+        Rect::from_size(&self.size)
+    }
 }
 
 impl<Content: Default + Clone> Canvas<Content> {
