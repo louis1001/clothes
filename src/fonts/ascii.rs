@@ -19,9 +19,9 @@ impl From<u8> for Ascii {
     }
 }
 
-impl Into<char>  for Ascii {
-    fn into(self) -> char {
-        self.0 as char
+impl From<Ascii>  for char {
+    fn from(val: Ascii) -> Self {
+        val.0 as char
     }
 }
 
@@ -32,8 +32,8 @@ impl TryFrom<char> for Ascii {
         if value.is_ascii() {
             value
                 .try_into()
-                .map(|ascii| Self(ascii))
-                .map_err(|err| AsciiError::ConversionError(err))
+                .map(Self)
+                .map_err(AsciiError::ConversionError)
         } else {
             Err(AsciiError::ValueNotAscii(value))
         }

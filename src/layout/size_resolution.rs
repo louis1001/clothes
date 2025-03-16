@@ -1,26 +1,14 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{ascii::Ascii, Font}, graphics::pixel::TwoBitPixel, layout::{self, alignment, sizing}, rendering::DrawCommand};
+use crate::{fonts::{ascii::Ascii, Font}, layout::{self, alignment, sizing}, rendering::DrawCommand};
 
 use super::{geometry::{Rect, Size}, node::Node, sized_node::{SizedNode, SizedItem}};
 
 // Calculate size
-pub struct SizeCalculator<Content: Clone + Default, Ctx: Clone> {
-    _content_marker: std::marker::PhantomData<Content>,
-    _marker: std::marker::PhantomData<Ctx>,
-}
+pub struct SizeCalculator;
 
-impl<Content: Clone + Default, Ctx: Clone> SizeCalculator<Content, Ctx> {
-    pub fn new() -> Self {
-        SizeCalculator {
-            _content_marker: std::marker::PhantomData{},
-            _marker: std::marker::PhantomData{}
-        }
-    }
-}
-
-impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalculator<Content, Ctx> {
-    fn calculate_line_size(&self, line: &str, bounds: &Rect, font: &Font) -> Size {
+impl SizeCalculator {
+    fn calculate_line_size(line: &str, bounds: &Rect, font: &Font) -> Size {
         let ascii_elements = line
             .chars()
             .filter_map(|x| Ascii::try_from(x).ok());
@@ -57,12 +45,12 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
             max_width = current_width;
         }
 
-        let height = row_count * character_height + (row_count - 1 * font.line_spacing());
+        let height = row_count * character_height + (row_count - font.line_spacing());
 
         Size::new(max_width, height)
     }
 
-    pub fn resolve_size(&self, container_node: &Node<Content, Ctx>, bounds: &Rect, context: &mut Ctx) -> SizedNode<Content> {
+    pub fn resolve_size<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug>(container_node: &Node<Content, Ctx>, bounds: &Rect, context: &mut Ctx) -> SizedNode<Content> {
         use Node::*;
         use sizing::Sizing::*;
 
@@ -74,7 +62,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 let mut width = 0usize;
                 let mut height = 0usize;
                 for line in lines {
-                    let sz = self.calculate_line_size(line, bounds, font);
+                    let sz = Self::calculate_line_size(line, bounds, font);
                     if sz.width > width {
                         width = sz.width;
                     }
@@ -88,7 +76,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::Text(t.clone()), sizing)
             }
             VCenter(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_height = content_size.vertical.min_content_size();
@@ -98,7 +86,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::VCenter(resolved), sizing)
             }
             VBottomAlign(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_height = content_size.vertical.min_content_size();
@@ -108,7 +96,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::VBottomAlign(resolved), sizing)
             }
             HCenter(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_width = content_size.horizontal.min_content_size();
@@ -118,7 +106,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::HCenter(resolved), sizing)
             }
             HRightAlign(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_width = content_size.horizontal.min_content_size();
@@ -128,7 +116,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::HRightAlign(resolved), sizing)
             }
             VTopAlign(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_height = content_size.vertical.min_content_size();
@@ -138,7 +126,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 SizedNode::new(SizedItem::VTopAlign(resolved), sizing)
             }
             HLeftAlign(node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let content_size = resolved.sizing.clone();
 
                 let min_width = content_size.horizontal.min_content_size();
@@ -151,7 +139,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 let mut bounds = bounds.clone();
                 bounds.width = *size;
 
-                let resolved_content = self.resolve_size(node, &bounds, context);
+                let resolved_content = Self::resolve_size(node, &bounds, context);
                 let mut frame = resolved_content.sizing.clone();
                 frame.horizontal = Static(*size);
 
@@ -161,14 +149,14 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 let mut bounds = bounds.clone();
                 bounds.height = *size;
 
-                let resolved_content = self.resolve_size(node, &bounds, context);
+                let resolved_content = Self::resolve_size(node, &bounds, context);
                 let mut frame = resolved_content.sizing.clone();
                 frame.vertical = Static(*size);
 
                 SizedNode::new(SizedItem::Height(*size, resolved_content), frame)
             }
             TopPadding(n, node) | BottomPadding(n, node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let mut frame = resolved.sizing.clone();
                 
                 frame.vertical.clamped_add(*n);
@@ -186,7 +174,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                     let mut bounds = bounds.clone();
                     bounds.height = bounds.height.saturating_sub(*n);
 
-                    let resolved_content = self.resolve_size(node, &bounds, context);
+                    let resolved_content = Self::resolve_size(node, &bounds, context);
                     let mut frame = resolved_content.sizing.clone();
 
                     frame.vertical.clamped_add(*n);
@@ -197,7 +185,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 }
             }
             LeftPadding(n, node) | RightPadding(n, node) => {
-                let resolved = self.resolve_size(node, bounds, context);
+                let resolved = Self::resolve_size(node, bounds, context);
                 let mut frame = resolved.sizing.clone();
 
                 let make_node = |n: usize, node: SizedNode<Content>|{
@@ -214,7 +202,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                     let mut bounds = bounds.clone();
                     bounds.width = bounds.width.saturating_sub(*n);
 
-                    let resolved_content = self.resolve_size(node, &bounds, context);
+                    let resolved_content = Self::resolve_size(node, &bounds, context);
                     frame = resolved_content.sizing.clone();
                     frame.horizontal.clamped_add(*n);
 
@@ -226,14 +214,14 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 }
             }
             Background(c, node) => {
-                let resolved_content = self.resolve_size(node, bounds, context);
+                let resolved_content = Self::resolve_size(node, bounds, context);
                 let frame = resolved_content.sizing.clone();
 
                 SizedNode::new(SizedItem::Background(c.clone(), resolved_content), frame)
             }
             Border(n, c, edges, node) => {
                 let outer_bounds = bounds;
-                let mut resolved_content = self.resolve_size(node, outer_bounds, context);
+                let mut resolved_content = Self::resolve_size(node, outer_bounds, context);
                 let mut frame = resolved_content.sizing.clone();
 
                 let mut added_height = 0;
@@ -252,7 +240,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                     let mut bounds = outer_bounds.clone();
                     bounds.height = bounds.height.saturating_sub(added_height);
 
-                    resolved_content = self.resolve_size(node, &bounds, context);
+                    resolved_content = Self::resolve_size(node, &bounds, context);
                     frame = resolved_content.sizing.clone();
 
                     frame.vertical.clamped_add(added_height);
@@ -274,7 +262,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                     let mut bounds = outer_bounds.clone();
                     bounds.width = bounds.width.saturating_sub(added_width);
 
-                    resolved_content = self.resolve_size(node, &bounds, context);
+                    resolved_content = Self::resolve_size(node, &bounds, context);
                     frame = resolved_content.sizing.clone();
 
                     frame.horizontal.clamped_add(added_width);
@@ -291,7 +279,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 let mut resolved_children: Vec<SizedNode<_>> = vec![];
 
                 for node in nodes {
-                    let resolved_node = self.resolve_size(node, &bounds, context);
+                    let resolved_node = Self::resolve_size(node, &bounds, context);
                     let node_sizing = resolved_node.sizing.clone();
                     result.horizontal = match result.horizontal {
                         Static(j) => match node_sizing.horizontal {
@@ -318,7 +306,7 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
                 let mut resolved_children = vec![];
 
                 for node in nodes {
-                    let resolved_node = self.resolve_size(node, &bounds, context);
+                    let resolved_node = Self::resolve_size(node, &bounds, context);
                     let node_sizing = resolved_node.sizing.clone();
                     result.vertical = match result.vertical {
                         Static(j) => match node_sizing.vertical {
@@ -341,27 +329,17 @@ impl<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug> SizeCalcula
             WithContext(node) => {
                 let node = node(context);
 
-                self.resolve_size(&node, bounds, context)
+                Self::resolve_size(&node, bounds, context)
             }
         }
     }
 }
 
-// Calculate size
-pub struct SizeResolver<Content: Clone + Default> {
-    _marker: std::marker::PhantomData<Content>
-}
+// Resolve size
+pub struct SizeResolver;
 
-impl<Content: Clone + Default> SizeResolver<Content> {
-    pub fn new() -> Self {
-        Self{
-            _marker: std::marker::PhantomData {}
-        }
-    }
-}
-
-impl<Content: Clone + Default> SizeResolver<Content> {
-    pub fn resolve_draw_commands(&self, sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
+impl SizeResolver {
+    pub fn resolve_draw_commands<Content: Clone + Default>(sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
         use SizedItem::*;
         let layout = sized_node.clone();
 
@@ -375,7 +353,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
             Width(_, node) | Height(_, node) => {
                 let frame = node.sizing.fit_into(bounds);
 
-                self.resolve_draw_commands(&node, &frame)
+                Self::resolve_draw_commands(&node, &frame)
             }
             VCenter(n) => {
                 let mut content_rect = n.sizing.fit_into(bounds);
@@ -385,7 +363,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
 
                 let content_bounds = n.sizing.fit_into(&content_rect);
 
-                self.resolve_draw_commands(&n, &content_bounds)
+                Self::resolve_draw_commands(&n, &content_bounds)
             }
             HCenter(n) => {
                 let mut content_rect = n.sizing.fit_into(bounds);
@@ -395,7 +373,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
 
                 let content_bounds = n.sizing.fit_into(&content_rect);
 
-                self.resolve_draw_commands(&n, &content_bounds)
+                Self::resolve_draw_commands(&n, &content_bounds)
             }
             VBottomAlign(n) => {
                 let mut content_rect = n.sizing.fit_into(bounds);
@@ -403,7 +381,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 let top_start = bottom_most - content_rect.height;
                 content_rect.y = top_start as i64;
 
-                self.resolve_draw_commands(&n, &content_rect)
+                Self::resolve_draw_commands(&n, &content_rect)
             }
             HRightAlign(n) => {
                 let mut content_rect = n.sizing.fit_into(bounds);
@@ -413,12 +391,12 @@ impl<Content: Clone + Default> SizeResolver<Content> {
 
                 let content_bounds = n.sizing.fit_into(&content_rect);
 
-                self.resolve_draw_commands(&n, &content_bounds)
+                Self::resolve_draw_commands(&n, &content_bounds)
             }
             VTopAlign(n) | HLeftAlign(n) => {
                 let content_rect = n.sizing.fit_into(bounds);
 
-                self.resolve_draw_commands(&n, &content_rect)
+                Self::resolve_draw_commands(&n, &content_rect)
             }
             TopPadding(n, node) => {
                 let mut bounds = bounds.clone();
@@ -427,7 +405,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 frame.x = bounds.x;
                 frame.y = bounds.y + n as i64;
 
-                self.resolve_draw_commands(&node, &frame)
+                Self::resolve_draw_commands(&node, &frame)
             }
             BottomPadding(n, node) => {
                 let mut bounds = bounds.clone();
@@ -437,7 +415,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 frame.x = bounds.x;
                 frame.y = bounds.y;
 
-                self.resolve_draw_commands(&node, &frame)
+                Self::resolve_draw_commands(&node, &frame)
             }
             RightPadding(n, node) => {
                 let mut frame = node.sizing.fit_into(bounds);
@@ -449,7 +427,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
 
                 frame.width = frame.width.saturating_sub(adjustment);
 
-                self.resolve_draw_commands(&node, &frame)
+                Self::resolve_draw_commands(&node, &frame)
             }
             LeftPadding(n, node) => {
                 let mut bounds = bounds.clone();
@@ -458,7 +436,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 frame.x = bounds.x + n as i64;
                 frame.y = bounds.y;
 
-                self.resolve_draw_commands(&node, &frame)
+                Self::resolve_draw_commands(&node, &frame)
             }
             Background(background_style, node) => {
                 let mut frame = node.sizing.fit_into(bounds);
@@ -467,7 +445,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
 
                 let mut commands = vec![DrawCommand::FillRect(bounds.clone(), background_style)];
 
-                let content_commands = self.resolve_draw_commands(&node, &frame);
+                let content_commands = Self::resolve_draw_commands(&node, &frame);
 
                 commands.extend(content_commands);
 
@@ -499,7 +477,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 frame.x = inner_bounds.x;
                 frame.y = inner_bounds.y;
 
-                let mut commands = self.resolve_draw_commands(&node, &frame);
+                let mut commands = Self::resolve_draw_commands(&node, &frame);
 
                 if edges == layout::alignment::Edge::all() {
                     commands.push(DrawCommand::StrokeRect(outer_bounds.clone(), n, border_style));
@@ -625,7 +603,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 nodes.into_iter().enumerate().flat_map(|(i, node)| {
                     let size = &final_bounds[i];
 
-                    self.resolve_draw_commands(&node, size)
+                    Self::resolve_draw_commands(&node, size)
                 }).collect::<Vec<_>>()
             }
             HorizontalStack(alignment, spacing, nodes) => {
@@ -719,7 +697,7 @@ impl<Content: Clone + Default> SizeResolver<Content> {
                 nodes.into_iter().enumerate().flat_map(|(i, node)| {
                     let size = &final_bounds[i];
 
-                    self.resolve_draw_commands(&node, size)
+                    Self::resolve_draw_commands(&node, size)
                 }).collect::<Vec<_>>()
             }
         }

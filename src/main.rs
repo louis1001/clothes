@@ -2,7 +2,7 @@ use std::io::Write;
 
 use clothes::{
     graphics::{canvas::Canvas, pixel::TwoBitPixel},
-    layout::{alignment::Edge, node::Node, size_resolution},
+    layout::{alignment::Edge, node::Node, size_resolution::{SizeCalculator, SizeResolver}},
     output::ppm_output::PpmOutput,
 };
 
@@ -17,11 +17,8 @@ fn main() -> std::io::Result<()> {
 
     println!("{:#?}", ly);
 
-    let sizer = size_resolution::SizeCalculator::new();
-    let resolver = size_resolution::SizeResolver::new();
-
-    let sized = sizer.resolve_size(&ly, &canvas.bounds(), &mut ());
-    let draw_commands = resolver.resolve_draw_commands(&sized, &canvas.bounds());
+    let sized = SizeCalculator::resolve_size(&ly, &canvas.bounds(), &mut ());
+    let draw_commands = SizeResolver::resolve_draw_commands(&sized, &canvas.bounds());
 
     canvas.execute_draw_commands(&draw_commands);
     

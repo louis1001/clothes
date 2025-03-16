@@ -17,7 +17,7 @@ impl From<bool> for TwoBitPixel {
 
 #[derive(Default, Clone)]
 pub struct RGBPixel {
-    r: f64,
-    g: f64,
-    b: f64
+    _r: f64,
+    _g: f64,
+    _b: f64
 }

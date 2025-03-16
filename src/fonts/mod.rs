@@ -123,7 +123,7 @@ fn three_by_three_glyphs() -> HashMap<Ascii, Glyph> {
     insert(vec!['"'], vec![true, false, true, true, false, true, false, false, false]);
 
 
-    return glyphs
+    glyphs
 }
 
 fn three_by_three_unknown_glyph() -> Glyph {

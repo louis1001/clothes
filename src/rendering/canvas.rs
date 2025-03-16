@@ -37,8 +37,7 @@ impl<Content: Clone + Default> Canvas<Content> {
 
                         match ascii {
                             Ascii(b' ') => current_x += font.space_width() as i64,
-                            c => current_x = emit_draw_command(font.get_glyph(&c), font.size(c), current_x),
-                            _ => current_x = emit_draw_command(font.default_glyph(), font.size(Ascii(b'0')), current_x)
+                            c => current_x = emit_draw_command(font.get_glyph(&c), font.size(c), current_x)
                         }
                     }
 
