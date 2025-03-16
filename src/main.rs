@@ -8,7 +8,16 @@ use clothes::{
 
 fn main() -> std::io::Result<()> {
     let canvas_size = 100;
-    let mut canvas: Canvas<TwoBitPixel> = Canvas::create(canvas_size, canvas_size);
+    let mut canvas= Canvas::create(canvas_size, canvas_size);
+    
+    use TwoBitPixel::*;
+    
+    let bitmap = vec![
+        None, Some(One), None,
+        Some(One), None, Some(One),
+        None, Some(One), None,
+    ];
+
     let commands = vec![
         DrawCommand::StrokeRect(
             Rect::new(
@@ -16,6 +25,8 @@ fn main() -> std::io::Result<()> {
                 40, 40
             ),
             2, true.into()
+        ),
+        DrawCommand::Bitmap(bitmap, Rect::new(2, 2, 3, 3)),
         )
     ];
 

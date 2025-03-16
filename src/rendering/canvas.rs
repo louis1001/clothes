@@ -86,6 +86,22 @@ impl<Content: Clone + Default> Canvas<Content> {
                         }
                     }
                 }
+                DrawCommand::Bitmap(bitmap, bounds) => {
+                    assert_eq!(bitmap.len(), bounds.width * bounds.height, "Bitmap command dimensions don't match the map");
+
+                    for dy in 0..(bounds.height) {
+                        for dx in 0..(bounds.width) {
+                            let x = dx + bounds.x as usize;
+                            let y = dy + bounds.y as usize;
+
+                            let Some(Some(content)) = bitmap.get(dy * bounds.height + dx) else {
+                                continue;
+                            };
+
+                            self.write(content, x, y);
+                        }
+                    }
+                }
             }
         }
     }
