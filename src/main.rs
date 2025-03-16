@@ -27,6 +27,14 @@ fn main() -> std::io::Result<()> {
             2, true.into()
         ),
         DrawCommand::Bitmap(bitmap, Rect::new(2, 2, 3, 3)),
+        DrawCommand::TextLine(
+            Rect::new(
+                canvas_size as i64 - 60,
+                canvas_size as i64 - 10,
+                100, 5
+            ),
+            "hello, world...".to_string(),
+            TwoBitPixel::One
         )
     ];
 

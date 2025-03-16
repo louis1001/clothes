@@ -1,42 +1,48 @@
-use crate::graphics::canvas::Canvas;
+use crate::{fonts::{ascii::Ascii, Font, Glyph}, graphics::canvas::Canvas, layout::geometry::{Rect, Size}};
 use super::DrawCommand;
 
 impl<Content: Clone + Default> Canvas<Content> {
     pub fn execute_draw_commands(&mut self, commands: &[DrawCommand<Content>]) {
         for command in commands {
             match command {
-                DrawCommand::Text(_bounds, _text) => {
-                    // let graphemes = text.as_str().graphemes(true)
-                    // .collect::<Vec<_>>();
-                    
-                    // let mut x = bounds.x as usize;
-                    // let mut y = bounds.y as usize;
-    
-                    // let mut iter = graphemes.iter().peekable();
-    
-                    // while let Some(g) = iter.next() {
-                    //     if *g == "\n" {
-                    //         y += 1;
-                    //         x = bounds.x as usize;
-                    //         continue;
-                    //     } else if *g == " " {
-                    //         // don't write anything
-                    //     } else {
-                    //         self.write(g, x, y);
-                    //     }
-    
-                    //     x += 1;
-                    //     if (x - bounds.x as usize) >= bounds.width {
-                    //         y += 1;
-                    //         x = bounds.x as usize;
-    
-                    //         if let Some(next) = iter.peek() {
-                    //             if **next == "\n" {
-                    //                 iter.next();
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                DrawCommand::TextLine(bounds, text, content) => {
+                    let mut extra_commands = vec![];
+                    // FIXME: Hardcoding a type of text for now.
+                    let font = Font::singleton();
+
+                    let mut current_x = bounds.x;
+
+                    let mut emit_draw_command = |glyph: &Glyph, size: &Size, x| {
+                        extra_commands.push(
+                            DrawCommand::Bitmap(
+                                glyph.map(|b| {
+                                    if b {
+                                        Some(content.clone())
+                                    } else {
+                                        None
+                                    }
+                                }),
+                                Rect::new(x, bounds.y, size.width, size.height)
+                            )
+                        );
+
+                        x + size.width as i64 + font.character_spacing() as i64
+                    };
+
+                    for c in text.chars() {
+                        let Ok(ascii) = Ascii::try_from(c) else {
+                            current_x = emit_draw_command(font.default_glyph(), font.size(Ascii(b'0')), current_x);
+                            continue;
+                        };
+
+                        match ascii {
+                            Ascii(b' ') => current_x += font.space_width() as i64,
+                            c => current_x = emit_draw_command(font.get_glyph(&c), font.size(c), current_x),
+                            _ => current_x = emit_draw_command(font.default_glyph(), font.size(Ascii(b'0')), current_x)
+                        }
+                    }
+
+                    self.execute_draw_commands(&extra_commands);
                 }
                 DrawCommand::FillRect(bounds, content) => {
                     self.draw_rect(bounds, content);
