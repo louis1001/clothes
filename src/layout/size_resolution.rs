@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{ascii::Ascii, Font}, layout::{self, alignment, sizing}, rendering::DrawCommand};
+use crate::{fonts::{ascii::Ascii, Font}, layout::{self, alignment::{self, Edge}, sizing}, rendering::DrawCommand};
 
 use super::{geometry::{Rect, Size}, node::Node, sized_node::{SizedNode, SizedItem}};
 
@@ -12,8 +12,8 @@ impl SizeCalculator {
         let ascii_elements = line
             .chars()
             .filter_map(|x| Ascii::try_from(x).ok());
-
-        let mut row_count = 1;
+        
+        let mut row_count = 1; // TODO: Are rows being calculated correctly? Too many off by one errors.
         let mut max_width: usize = 0;
         let mut current_width = 0;
         let mut character_height = 0;
@@ -21,7 +21,9 @@ impl SizeCalculator {
         for element in ascii_elements {
             if element.0 == b' ' {
                 // FIXME: Add character spacing before space?
-                current_width += font.space_width();
+                if current_width != 0 {
+                    current_width += font.space_width();
+                }
                 continue;
             }
 
@@ -32,20 +34,21 @@ impl SizeCalculator {
                 character_height = element_size.height;
             }
 
-            let new_width = current_width + font.character_spacing() + element_size.width;
+            let character_spacing = if current_width != 0 { font.character_spacing() } else { 0 };
+            let new_width = current_width + element_size.width + character_spacing;
 
             if new_width > bounds.width {
-                current_width = 0;
+                current_width = element_size.width;
                 row_count += 1;
 
                 continue;
             }
 
             current_width = new_width;
-            max_width = current_width;
+            max_width = current_width.max(max_width);
         }
 
-        let height = row_count * character_height + (row_count - font.line_spacing());
+        let height = (row_count * character_height) + ((row_count - 1) * font.line_spacing());
 
         Size::new(max_width, height)
     }
@@ -219,21 +222,13 @@ impl SizeCalculator {
 
                 SizedNode::new(SizedItem::Background(c.clone(), resolved_content), frame)
             }
-            Border(n, c, edges, node) => {
+            TopBorder(n, c, node) => {
                 let outer_bounds = bounds;
                 let mut resolved_content = Self::resolve_size(node, outer_bounds, context);
                 let mut frame = resolved_content.sizing.clone();
 
-                let mut added_height = 0;
-                
-                if edges.contains(&alignment::Edge::Top) {
-                    frame.vertical.clamped_add(*n);
-                    added_height += *n;
-                }
-                if edges.contains(&alignment::Edge::Bottom) {
-                    frame.vertical.clamped_add(*n);
-                    added_height += *n;
-                }
+                let added_height = *n;
+                frame.vertical.clamped_add(*n);
 
                 if frame.vertical.min_content_size() > outer_bounds.height {
                     // recalculate with less space
@@ -246,16 +241,57 @@ impl SizeCalculator {
                     frame.vertical.clamped_add(added_height);
                 }
 
-                let mut added_width = 0;
+                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Top), resolved_content), frame)
+            }
+            BottomBorder(n, c, node) => {
+                let outer_bounds = bounds;
+                let mut resolved_content = Self::resolve_size(node, outer_bounds, context);
+                let mut frame = resolved_content.sizing.clone();
 
-                if edges.contains(&alignment::Edge::Left) {
-                    frame.horizontal.clamped_add(*n);
-                    added_width += *n;
+                let added_height = *n;
+                frame.vertical.clamped_add(*n);
+
+                if frame.vertical.min_content_size() > outer_bounds.height {
+                    // recalculate with less space
+                    let mut bounds = outer_bounds.clone();
+                    bounds.height = bounds.height.saturating_sub(added_height);
+
+                    resolved_content = Self::resolve_size(node, &bounds, context);
+                    frame = resolved_content.sizing.clone();
+
+                    frame.vertical.clamped_add(added_height);
                 }
-                if edges.contains(&alignment::Edge::Right) {
-                    frame.horizontal.clamped_add(*n);
-                    added_width += *n;
+
+                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Bottom), resolved_content), frame)
+            }
+            LeftBorder(n, c, node) => {
+                let outer_bounds = bounds;
+                let mut resolved_content = Self::resolve_size(node, outer_bounds, context);
+                let mut frame = resolved_content.sizing.clone();
+
+                let added_width = *n;
+                frame.horizontal.clamped_add(*n);
+                
+                if frame.horizontal.min_content_size() > outer_bounds.width {
+                    // recalculate with less space
+                    let mut bounds = outer_bounds.clone();
+                    bounds.width = bounds.width.saturating_sub(added_width);
+
+                    resolved_content = Self::resolve_size(node, &bounds, context);
+                    frame = resolved_content.sizing.clone();
+
+                    frame.horizontal.clamped_add(added_width);
                 }
+
+                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Left), resolved_content), frame)
+            }
+            RightBorder(n, c, node) => {
+                let outer_bounds = bounds;
+                let mut resolved_content = Self::resolve_size(node, outer_bounds, context);
+                let mut frame = resolved_content.sizing.clone();
+
+                let added_width = *n;
+                frame.horizontal.clamped_add(*n);
 
                 if frame.horizontal.min_content_size() > outer_bounds.width {
                     // recalculate with less space
@@ -268,7 +304,7 @@ impl SizeCalculator {
                     frame.horizontal.clamped_add(added_width);
                 }
 
-                SizedNode::new(SizedItem::Border(*n, c.clone(), edges.clone(), resolved_content), frame)
+                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Right), resolved_content), frame)
             }
 
             VerticalStack(alignment, spacing,  nodes) => {
@@ -339,6 +375,93 @@ impl SizeCalculator {
 pub struct SizeResolver;
 
 impl SizeResolver {
+    fn split_wrapping<'a>(line: &'a str, bounds: &Rect, font: &Font) -> Vec<&'a str> {
+        let mut wrapping_lines = vec![];
+
+        let mut current_width = 0;
+
+        let char_indices = line.char_indices();
+
+        let Some((mut previous_starting_index, _)) = char_indices.clone().next() else {
+            return vec![];
+        };
+
+        for (index, c) in char_indices {
+            // FIXME: Calculating only first character. Unicode will not work
+            let Ok(element) = Ascii::try_from(c) else {
+                // TODO: Default unknown character
+                continue;
+            };
+            
+            if element.0 == b' ' {
+                // FIXME: Add character spacing before space?
+                if current_width != 0 {
+                    current_width += font.space_width();
+                }
+                continue;
+            }
+
+            let element_size = font.size(element);
+
+            let character_spacing = if current_width != 0 { font.character_spacing() } else { 0 };
+            let new_width = current_width + element_size.width + character_spacing;
+
+            if new_width > bounds.width {
+                let subline = line.get(previous_starting_index..index);
+                previous_starting_index = index;
+                current_width = element_size.width;
+                
+                if let Some(subline) = subline {
+                    wrapping_lines.push(subline);
+                }
+
+                continue;
+            }
+
+            current_width = new_width;
+        }
+
+        let last_line = line.get(previous_starting_index..);
+
+        if let Some(last_line) = last_line {
+            if last_line.len() > 0 {
+                wrapping_lines.push(last_line);
+            }
+        }
+
+        wrapping_lines
+    }
+
+    fn calculate_line_size(line: &str, font: &Font) -> Size {
+        let ascii_elements = line
+            .chars()
+            .filter_map(|x| Ascii::try_from(x).ok());
+
+        let mut max_width: usize = 0;
+        let mut current_width = 0;
+        let mut character_height = 0;
+
+        for element in ascii_elements {
+            if element.0 == b' ' {
+                // FIXME: Add character spacing before space?
+                current_width += font.space_width();
+                continue;
+            }
+
+            let element_size = font.size(element);
+
+            if character_height == 0 {
+                // FIXME: Better height calculation
+                character_height = element_size.height;
+            }
+
+            current_width = current_width + font.character_spacing() + element_size.width;
+            max_width = current_width.max(max_width);
+        }
+
+        Size::new(max_width, character_height)
+    }
+
     pub fn resolve_draw_commands<Content: Clone + Default>(sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
         use SizedItem::*;
         let layout = sized_node.clone();
@@ -346,9 +469,30 @@ impl SizeResolver {
         match *layout.node {
             Text(text) => {
                 // TODO: Handle current content (foreground, background style)
+                let font = Font::singleton();
+                let lines = text.lines()
+                    .flat_map(|line| Self::split_wrapping(line, bounds, font));
+
+                let mut commands = vec![];
+                let mut line_y = bounds.y;
+
+                for line in lines {
+                    let size = Self::calculate_line_size(line, font);
+
+                    let line_bounds = Rect::new(
+                        bounds.x, // FIXME: Left align
+                        line_y,
+                        size.width,
+                        size.height
+                    );
+
+                    line_y += line_bounds.height as i64 + font.line_spacing() as i64;
+
+                    commands.push(DrawCommand::TextLine(line_bounds, line.to_string(), Content::default()));
+                }
 
                 // TODO: Convert text into text lines (split by new line, handle when a line wraps...)
-                vec![DrawCommand::TextLine(bounds.clone(), text, Content::default())]
+                commands
             }
             Width(_, node) | Height(_, node) => {
                 let frame = node.sizing.fit_into(bounds);

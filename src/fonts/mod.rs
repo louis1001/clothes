@@ -24,7 +24,7 @@ static THREE_BY_THREE_MONO: Lazy<Font> = Lazy::new(|| {
         glyphs: three_by_three_glyphs(),
         size: Size::new(3, 3),
         unknown_glyph: three_by_three_unknown_glyph(),
-        space_width: 2,
+        space_width: 5,
         line_spacing: 1,
         character_spacing: 1
     }
@@ -120,8 +120,15 @@ fn three_by_three_glyphs() -> HashMap<Ascii, Glyph> {
     insert(vec!['\\'],vec![true, false, true, false, true, false, false, false, true]);
     insert(vec!['.'], vec![false, false, false, false, false, false, true, false, false]);
     insert(vec![','], vec![false, false, false, false, true, false, true, false, false]);
+    insert(vec!['\''], vec![false, true, false, false, true, false, false, false, false]);
     insert(vec!['"'], vec![true, false, true, true, false, true, false, false, false]);
-
+    insert(vec!['_'], vec![false, false, false, false, false, false, true, true, true]);
+    insert(vec!['('], vec![false, true, false, true, false, false, false, true, false]);
+    insert(vec![')'], vec![false, true, false, false, false, true, false, true, false]);
+    insert(vec!['='], vec![true, true, true, false, false, false, true, true, true]);
+    
+    insert(vec!['+'], vec![false, true, false, true, true, true, false, true, false]);
+    insert(vec!['-'], vec![false, false, false, true, true, true, false, false, false]);
 
     glyphs
 }

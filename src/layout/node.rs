@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use crate::layout::alignment::Edge;
+
 use super::alignment;
 use super::geometry;
 
@@ -18,7 +20,10 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: std::fmt::Debug> 
     VTopAlign(Box<Node<Content, Ctx>>),
     HLeftAlign(Box<Node<Content, Ctx>>),
     Background(Content, Box<Node<Content, Ctx>>),
-    Border(usize, Content, HashSet<alignment::Edge>, Box<Node<Content, Ctx>>),
+    TopBorder(usize, Content, Box<Node<Content, Ctx>>),
+    BottomBorder(usize, Content, Box<Node<Content, Ctx>>),
+    LeftBorder(usize, Content, Box<Node<Content, Ctx>>),
+    RightBorder(usize, Content, Box<Node<Content, Ctx>>),
 
     VerticalStack(alignment::HorizontalAlignment, usize, Vec<Node<Content, Ctx>>),
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<Node<Content, Ctx>>),
@@ -98,12 +103,23 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         Node::VBottomAlign(Box::new(self))
     }
 
-    pub fn border(self, n: usize, c: Content, edges: HashSet<alignment::Edge>) -> Node<Content, Ctx> {
-        Node::Border(n, c, edges, Box::new(self))
+    pub fn border<C: Into<Content> + Clone>(self, n: usize, c: C, edges: HashSet<alignment::Edge>) -> Node<Content, Ctx> {
+        let mut resulting_node = self;
+
+        for edge in edges {
+            match edge {
+                Edge::Top => resulting_node = Node::TopBorder(n, c.clone().into(), Box::new(resulting_node)),
+                Edge::Bottom => resulting_node = Node::BottomBorder(n, c.clone().into(), Box::new(resulting_node)),
+                Edge::Left => resulting_node = Node::LeftBorder(n, c.clone().into(), Box::new(resulting_node)),
+                Edge::Right => resulting_node = Node::RightBorder(n, c.clone().into(), Box::new(resulting_node))
+            }
+        }
+        
+        resulting_node
     }
 
-    pub fn background(self, c: Content) -> Node<Content, Ctx> {
-        Node::Background(c, Box::new(self))
+    pub fn background<C: Into<Content>>(self, c: C) -> Node<Content, Ctx> {
+        Node::Background(c.into(), Box::new(self))
     }
 
     pub fn vertical_stack(nodes: Vec<Node<Content, Ctx>>) -> Node<Content, Ctx> {
