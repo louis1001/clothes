@@ -1,4 +1,4 @@
-use crate::graphics::{canvas::Canvas, pixel::TwoBitPixel};
+use crate::graphics::{canvas::Canvas, pixel::{RGBPixel, TwoBitPixel}};
 
 pub trait ImageSource {
     type Pixel;
@@ -67,5 +67,39 @@ impl PpmOutput for Canvas<TwoBitPixel> {
         }
 
         output
+    }
+}
+
+impl PpmOutput for Canvas<RGBPixel> {
+    fn header(&self) -> String {
+        format!("P3\n{} {}\n{}", self.width(), self.height(), self.max_value() - 1)
+    }
+
+    fn pixel_row(&self, y: usize) -> String {
+        let mut output = String::new();
+        
+        for x in 0..self.width() {
+            let pixel = self.get_at(x, y).cloned().unwrap_or_default();
+
+            let r = Self::map(pixel.r(), self.max_value());
+            let g = Self::map(pixel.g(), self.max_value());
+            let b = Self::map(pixel.b(), self.max_value());
+
+            output.push_str(&format!("{r} {g} {b}"));
+
+            output.push_str("   ");
+        }
+
+        output
+    }
+}
+
+impl Canvas<RGBPixel> {
+    fn max_value(&self) -> usize {
+        256
+    }
+
+    fn map(n: f64, target: usize) -> usize {
+        (n * target as f64).floor().abs() as usize
     }
 }

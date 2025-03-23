@@ -12,7 +12,8 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,
-            "sourceLanguages": ["rust"]
+            "sourceLanguages": ["rust"],
+            "preLaunchTask": "rust: cargo build"
         }
     ]
 }
