@@ -6,7 +6,7 @@ use super::geometry;
 
 #[derive(Clone, Debug)]
 pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: std::fmt::Debug> {
-    Text(String),
+    Text(String, Content),
     Width(usize, Box<Node<Content, Ctx>>),
     Height(usize, Box<Node<Content, Ctx>>),
     TopPadding(usize, Box<Node<Content, Ctx>>),
@@ -33,8 +33,12 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: std::fmt::Debug> 
 }
 
 impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> Node<Content, Ctx> {
-    pub fn text(content: &str) -> Node<Content, Ctx> {
-        Node::Text(content.to_string())
+    pub fn text(text: &str) -> Node<Content, Ctx> {
+        Node::Text(text.to_string(), Content::default())
+    }
+
+    pub fn text_with_content(text: &str, content: Content) -> Node<Content, Ctx> {
+        Node::Text(text.to_string(), content)
     }
 
     pub fn center(self) -> Node<Content, Ctx> {

@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Debug};
 use super::{alignment, sizing};
 
-#[derive(Clone)]
-pub enum SizedItem<Content: Clone + Default> {
-    Text(String),
+#[derive(Clone, Debug)]
+pub enum SizedItem<Content: Clone + Default + Debug> {
+    Text(String, Content),
     Width(usize, SizedNode<Content>),
     Height(usize, SizedNode<Content>),
     TopPadding(usize, SizedNode<Content>),
@@ -23,13 +23,13 @@ pub enum SizedItem<Content: Clone + Default> {
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<SizedNode<Content>>)
 }
 
-#[derive(Clone)]
-pub struct SizedNode<Content: Clone + Default> {
+#[derive(Clone, Debug)]
+pub struct SizedNode<Content: Clone + Default + Debug> {
     pub node: Box<SizedItem<Content>>,
     pub sizing: sizing::ItemSizing
 }
 
-impl<Content: Clone + Default> SizedNode<Content> {
+impl<Content: Clone + Default + Debug> SizedNode<Content> {
     pub fn new(node: SizedItem<Content>, sizing: sizing::ItemSizing) -> Self {
         SizedNode { node: Box::new(node), sizing }
     }

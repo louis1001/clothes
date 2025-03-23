@@ -1,82 +1,35 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{ascii::Ascii, Font}, layout::{self, alignment::{self, Edge}, sizing}, rendering::DrawCommand};
+use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing}, rendering::DrawCommand};
 
-use super::{geometry::{Rect, Size}, node::Node, sized_node::{SizedNode, SizedItem}};
+use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
 
 // Calculate size
 pub struct SizeCalculator;
 
 impl SizeCalculator {
-    fn calculate_line_size(line: &str, bounds: &Rect, font: &Font) -> Size {
-        let ascii_elements = line
-            .chars()
-            .filter_map(|x| Ascii::try_from(x).ok());
-        
-        let mut row_count = 1; // TODO: Are rows being calculated correctly? Too many off by one errors.
-        let mut max_width: usize = 0;
-        let mut current_width = 0;
-        let mut character_height = 0;
-
-        for element in ascii_elements {
-            if element.0 == b' ' {
-                // FIXME: Add character spacing before space?
-                if current_width != 0 {
-                    current_width += font.space_width();
-                }
-                continue;
-            }
-
-            let element_size = font.size(element);
-
-            if character_height == 0 {
-                // FIXME: Better height calculation
-                character_height = element_size.height;
-            }
-
-            let character_spacing = if current_width != 0 { font.character_spacing() } else { 0 };
-            let new_width = current_width + element_size.width + character_spacing;
-
-            if new_width > bounds.width {
-                current_width = element_size.width;
-                row_count += 1;
-
-                continue;
-            }
-
-            current_width = new_width;
-            max_width = current_width.max(max_width);
-        }
-
-        let height = (row_count * character_height) + ((row_count - 1) * font.line_spacing());
-
-        Size::new(max_width, height)
-    }
-
     pub fn resolve_size<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug>(container_node: &Node<Content, Ctx>, bounds: &Rect, context: &mut Ctx) -> SizedNode<Content> {
         use Node::*;
         use sizing::Sizing::*;
 
         match container_node {
-            Text(t) => {
+            Text(t, content) => {
                 let font = Font::singleton();
-                let lines = t.lines();
-
-                let mut width = 0usize;
-                let mut height = 0usize;
-                for line in lines {
-                    let sz = Self::calculate_line_size(line, bounds, font);
-                    if sz.width > width {
-                        width = sz.width;
-                    }
-
-                    height += sz.height;
-                }
+                let resolved_text = font.calculate_lines(&t, bounds);
+                let width = resolved_text.size().width;
+                let height = resolved_text.size().height;
+                
+                // FIXME: Having a layered layout causes this code to be called way too many times.
+                // maybe my approach with borders and paddings is a little too much.
+                // Right now, I calculate the content of (for example) a TopPadding with no alterations,
+                // then check if that total size will be more than the allowed size,
+                // and if it's too much, then recalculate contents by constraining to whatever the padding is.
+                // I think it should be fine if I calculate content size by adding the padding or border constraint before.
 
                 // TODO: Introduce `Flexible` item sizing to handle better text sizing.
                 let sizing = sizing::ItemSizing::new(Static(width), Static(height));
 
-                SizedNode::new(SizedItem::Text(t.clone()), sizing)
+                SizedNode::new(SizedItem::Text(t.clone(), content.clone()), sizing)
             }
             VCenter(node) => {
                 let resolved = Self::resolve_size(node, bounds, context);
@@ -375,120 +328,45 @@ impl SizeCalculator {
 pub struct SizeResolver;
 
 impl SizeResolver {
-    fn split_wrapping<'a>(line: &'a str, bounds: &Rect, font: &Font) -> Vec<&'a str> {
-        let mut wrapping_lines = vec![];
-
-        let mut current_width = 0;
-
-        let char_indices = line.char_indices();
-
-        let Some((mut previous_starting_index, _)) = char_indices.clone().next() else {
-            return vec![];
-        };
-
-        for (index, c) in char_indices {
-            // FIXME: Calculating only first character. Unicode will not work
-            let Ok(element) = Ascii::try_from(c) else {
-                // TODO: Default unknown character
-                continue;
-            };
-            
-            if element.0 == b' ' {
-                // FIXME: Add character spacing before space?
-                if current_width != 0 {
-                    current_width += font.space_width();
-                }
-                continue;
-            }
-
-            let element_size = font.size(element);
-
-            let character_spacing = if current_width != 0 { font.character_spacing() } else { 0 };
-            let new_width = current_width + element_size.width + character_spacing;
-
-            if new_width > bounds.width {
-                let subline = line.get(previous_starting_index..index);
-                previous_starting_index = index;
-                current_width = element_size.width;
-                
-                if let Some(subline) = subline {
-                    wrapping_lines.push(subline);
-                }
-
-                continue;
-            }
-
-            current_width = new_width;
-        }
-
-        let last_line = line.get(previous_starting_index..);
-
-        if let Some(last_line) = last_line {
-            if last_line.len() > 0 {
-                wrapping_lines.push(last_line);
-            }
-        }
-
-        wrapping_lines
-    }
-
-    fn calculate_line_size(line: &str, font: &Font) -> Size {
-        let ascii_elements = line
-            .chars()
-            .filter_map(|x| Ascii::try_from(x).ok());
-
-        let mut max_width: usize = 0;
-        let mut current_width = 0;
-        let mut character_height = 0;
-
-        for element in ascii_elements {
-            if element.0 == b' ' {
-                // FIXME: Add character spacing before space?
-                current_width += font.space_width();
-                continue;
-            }
-
-            let element_size = font.size(element);
-
-            if character_height == 0 {
-                // FIXME: Better height calculation
-                character_height = element_size.height;
-            }
-
-            current_width = current_width + font.character_spacing() + element_size.width;
-            max_width = current_width.max(max_width);
-        }
-
-        Size::new(max_width, character_height)
-    }
-
-    pub fn resolve_draw_commands<Content: Clone + Default>(sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
+    pub fn resolve_draw_commands<Content: Clone + Default + Debug>(sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
         use SizedItem::*;
         let layout = sized_node.clone();
 
         match *layout.node {
-            Text(text) => {
+            Text(text, content) => {
                 // TODO: Handle current content (foreground, background style)
                 let font = Font::singleton();
-                let lines = text.lines()
-                    .flat_map(|line| Self::split_wrapping(line, bounds, font));
 
                 let mut commands = vec![];
-                let mut line_y = bounds.y;
+                let resolved_text = font.calculate_lines(&text, bounds);
 
-                for line in lines {
-                    let size = Self::calculate_line_size(line, font);
-
+                for line in resolved_text.lines() {
                     let line_bounds = Rect::new(
-                        bounds.x, // FIXME: Left align
-                        line_y,
-                        size.width,
-                        size.height
+                        bounds.x + line.bounds().x, // FIXME: Left align only at the moment
+                        bounds.y + line.bounds().y,
+                        line.bounds().size().width,
+                        line.bounds().size().height
                     );
 
-                    line_y += line_bounds.height as i64 + font.line_spacing() as i64;
+                    let mut emit_draw_command = |glyph: &Glyph, size: &Size, offset: &Size| {
+                        commands.push(DrawCommand::Bitmap(
+                            glyph.map(|b| if b { Some(content.clone()) } else { None }),
+                            Rect::new(
+                                offset.width as i64 + line_bounds.x,
+                                offset.height as i64 + line_bounds.y,
+                                size.width,
+                                size.height,
+                            ),
+                        ));
+                    };
 
-                    commands.push(DrawCommand::TextLine(line_bounds, line.to_string(), Content::default()));
+                    for resolved_glyph in &line.glyphs {
+                        emit_draw_command(
+                            resolved_glyph.glyph(),
+                            resolved_glyph.size(),
+                            resolved_glyph.offset(),
+                        );
+                    }
                 }
 
                 // TODO: Convert text into text lines (split by new line, handle when a line wraps...)
@@ -835,8 +713,6 @@ impl SizeResolver {
 
                     bound
                 }).collect();
-
-                
 
                 nodes.into_iter().enumerate().flat_map(|(i, node)| {
                     let size = &final_bounds[i];

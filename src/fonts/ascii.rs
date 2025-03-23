@@ -60,4 +60,8 @@ impl Ascii {
     pub fn is_printable(&self) -> bool {
         self.0 >= b' ' && self.0 <= b'~'
     }
+
+    pub fn is_space(&self) -> bool {
+        self.0 == b' '
+    }
 }

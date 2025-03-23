@@ -1,4 +1,5 @@
 pub mod ascii;
+pub mod font_calculations;
 
 use std::collections::HashMap;
 
@@ -8,6 +9,7 @@ use once_cell::sync::Lazy;
 
 /// A grid of points (bool) that determine how a glyph should be drawn.
 /// `true` is a pixel to fill in, `false` represents an empty space in the grid.
+#[derive(PartialEq)]
 pub struct Glyph(Vec<bool>);
 
 pub struct Font {
@@ -20,13 +22,17 @@ pub struct Font {
 }
 
 static THREE_BY_THREE_MONO: Lazy<Font> = Lazy::new(|| {
+    let square_size = 3;
+    let character_spacing = 1;
+    let space_width = character_spacing * 2 + square_size;
+
     Font {
         glyphs: three_by_three_glyphs(),
-        size: Size::new(3, 3),
+        size: Size::new(square_size, square_size),
         unknown_glyph: three_by_three_unknown_glyph(),
-        space_width: 5,
+        space_width: space_width,
         line_spacing: 1,
-        character_spacing: 1
+        character_spacing: character_spacing
     }
 });
 

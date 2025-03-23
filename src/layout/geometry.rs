@@ -88,7 +88,7 @@ impl Vector {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Size {
     pub width: usize,
     pub height: usize
