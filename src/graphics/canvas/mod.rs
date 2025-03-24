@@ -2,7 +2,7 @@ use crate::layout::geometry::{Rect, Size};
 
 pub struct Canvas<Content: Default + Clone> {
     pub(crate) size: Size,
-    contents: Vec<Content>
+    pub(crate) contents: Vec<Content>
 }
 
 impl<Content: Default + Clone> Default for Canvas<Content> {

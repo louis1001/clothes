@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing}, rendering::DrawCommand};
+use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing::{self, Sizing}}, rendering::DrawCommand};
 
 use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
 
@@ -552,7 +552,7 @@ impl SizeResolver {
                     }
                 }
 
-                let mut greedy_space = bounds.height - static_height;
+                let mut greedy_space = bounds.height.saturating_sub(static_height);
                 let greedy_size = if greedy_count != 0 { greedy_space / greedy_count } else { 0 };
 
                 let mut new_nodes = vec![];

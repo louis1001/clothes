@@ -108,13 +108,14 @@ impl Font {
             
             context.commit_glyph(index, element_ascii, element_glyph, element_size.clone());
 
-            if context.line_y() + element_size.height >= bounds.height {
+            let line_y = context.line_y();
+            if line_y + element_size.height > bounds.height {
                 overflowing_y = true;
                 break;
             }
         }
 
-        if ! overflowing_y { context.commit_line(None); }
+        if !overflowing_y { context.commit_line(None); }
 
         let total_size = Size::new(context.content_width(), context.content_height());
 
@@ -159,10 +160,7 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
                 }
             });
 
-            let mut line_y = self.line_y();
-            if line_y != 0 {
-                line_y += self.font.line_spacing();
-            }
+            let line_y = self.line_y();
 
             let resolved_line = ResolvedLine {
                 line_text: subline,
@@ -187,6 +185,8 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
         }
         
         let mut x_offset = self.next_glyph_x();
+
+        // FIXME: Implement a better word wrapping/word breaking behavior.
         if (x_offset + element_size.width) > self.bounds.width {
             self.commit_line(Some(char_index));
             x_offset = 0;
@@ -273,10 +273,16 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
     }
 
     pub fn line_y(&self) -> usize {
-        self.fitting_lines
+        let max_y = self.fitting_lines
             .last()
             .map(|x| x.bounds.max_y() as usize)
-            .unwrap_or(0)
+            .unwrap_or(0);
+
+        if max_y != 0 {
+            max_y + self.font.line_spacing()
+        } else {
+            max_y
+        }
     }
 
     fn content_width(&self) -> usize {
