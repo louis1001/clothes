@@ -37,24 +37,30 @@ impl RGBPixel {
 }
 
 impl RGBPixel {
+    pub fn brightness(&self) -> f64 {
+        0.299 * self.r() + 0.587 * self.g() + 0.114 * self.b()
+    }
+}
+
+impl RGBPixel {
     pub fn white() -> Self {
-        RGBPixel { r: 1., g: 1., b: 1. }
+        RGBPixel { r: 1., g: 0.98, b: 0.96 }
     }
 
     pub fn black() -> Self {
-        RGBPixel { r: 0., g: 0., b: 0. }
+        RGBPixel { r: 0.3, g: 0.3, b: 0.45 }
     }
     
     pub fn red() -> Self {
-        RGBPixel { r: 1., g: 0., b: 0. }
+        RGBPixel { r: 0.94, g: 0.4, b: 0.1 }
     }
 
     pub fn green() -> Self {
-        RGBPixel { r: 0., g: 1., b: 0. }
+        RGBPixel { r: 0.7, g: 0.95, b: 0.4 }
     }
 
     pub fn blue() -> Self {
-        RGBPixel { r: 0., g: 0., b: 1. }
+        RGBPixel { r: 0.4, g: 0.35, b: 0.98 }
     }
 }
 
