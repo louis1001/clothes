@@ -1,3 +1,5 @@
+pub mod conversions;
+
 use crate::layout::geometry::{Rect, Size};
 
 pub struct Canvas<Content: Default + Clone> {
@@ -17,6 +19,10 @@ impl<Content: Default + Clone> Canvas<Content> {
             size: Size::zero(),
             contents: Vec::new()
         }
+    }
+
+    pub fn create_with_content(contents: Vec<Content>, size: &Size) -> Self {
+        Canvas { size: size.clone(), contents }
     }
 
     pub fn create_in_bounds(size: &Size) -> Self {

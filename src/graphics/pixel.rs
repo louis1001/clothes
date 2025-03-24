@@ -1,4 +1,4 @@
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum TwoBitPixel {
     #[default]
     Zero,
@@ -15,7 +15,7 @@ impl From<bool> for TwoBitPixel {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RGBPixel {
     r: f64,
     g: f64,
@@ -55,5 +55,11 @@ impl RGBPixel {
 
     pub fn blue() -> Self {
         RGBPixel { r: 0., g: 0., b: 1. }
+    }
+}
+
+impl Default for RGBPixel {
+    fn default() -> Self {
+        Self::black()
     }
 }
