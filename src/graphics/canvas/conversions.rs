@@ -9,7 +9,7 @@ pub struct CanvasConversion<'from, FromPixel: Clone + Default, ToPixel: Clone + 
     conversion: Box<dyn Fn(FromPixel) -> ToPixel>
 }
 
-impl<'from, 'to, FromPixel: Clone + Default, ToPixel: Clone + Default>
+impl<'from, FromPixel: Clone + Default, ToPixel: Clone + Default>
     From<CanvasConversion<'from, FromPixel, ToPixel>> for Canvas<ToPixel> {
     fn from(value: CanvasConversion<'from, FromPixel, ToPixel>) -> Self {
         let source_canvas = value.source_canvas;
@@ -29,10 +29,10 @@ impl Canvas<RGBPixel> {
         CanvasConversion {
             source_canvas: self,
             conversion: Box::new({
-                let threshold = threshold.clone();
+                let min_value = threshold;
 
                 move |pixel| {
-                    (pixel.brightness() > threshold).into()
+                    (pixel.brightness() > min_value).into()
                 }
             })
         }
@@ -57,7 +57,7 @@ impl From<Canvas<RGBPixel>> for Canvas<TwoBitPixel> {
 impl From<Canvas<TwoBitPixel>> for Canvas<RGBPixel> {
     fn from(value: Canvas<TwoBitPixel>) -> Self {
         let new_pixels = value.contents.iter()
-            .map(|x| x.clone().into())
+            .map(|x| (*x).into())
             .collect();
 
         Canvas::create_with_content(new_pixels, &value.size)

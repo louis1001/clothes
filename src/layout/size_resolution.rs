@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing::{self, Sizing}}, rendering::DrawCommand};
+use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing::{self}}, rendering::DrawCommand};
 
 use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
 
@@ -15,7 +15,7 @@ impl SizeCalculator {
         match container_node {
             Text(t, content) => {
                 let font = Font::singleton();
-                let resolved_text = font.calculate_lines(&t, bounds);
+                let resolved_text = font.calculate_lines(t, bounds);
                 let width = resolved_text.size().width;
                 let height = resolved_text.size().height;
                 

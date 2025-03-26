@@ -5,7 +5,7 @@ use super::alignment;
 use super::geometry;
 
 #[derive(Clone, Debug)]
-pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: std::fmt::Debug> {
+pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> {
     Text(String, Content),
     Width(usize, Box<Node<Content, Ctx>>),
     Height(usize, Box<Node<Content, Ctx>>),
@@ -33,11 +33,11 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: std::fmt::Debug> 
 }
 
 impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> Node<Content, Ctx> {
-    pub fn text(text: &str) -> Node<Content, Ctx> {
+    pub fn plain_text(text: &str) -> Node<Content, Ctx> {
         Node::Text(text.to_string(), Content::default())
     }
 
-    pub fn text_with_content(text: &str, content: Content) -> Node<Content, Ctx> {
+    pub fn text(text: &str, content: Content) -> Node<Content, Ctx> {
         Node::Text(text.to_string(), content)
     }
 
@@ -85,10 +85,32 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         self.padding_top(n).padding_bottom(n)
     }
 
-    pub fn padding(self, n: usize) -> Node<Content, Ctx> {
+    pub fn padding_all(self, n: usize) -> Node<Content, Ctx> {
         self
             .padding_vertical(n)
             .padding_horizontal(n)
+    }
+
+    pub fn padding(self, n: usize, edges: HashSet<Edge>) -> Node<Content, Ctx> {
+        let mut result_node = self;
+
+        if edges.contains(&Edge::Top) {
+            result_node = Node::TopPadding(n, Box::new(result_node));
+        }
+
+        if edges.contains(&Edge::Right) {
+            result_node = Node::RightPadding(n, Box::new(result_node));
+        }
+
+        if edges.contains(&Edge::Bottom) {
+            result_node = Node::BottomPadding(n, Box::new(result_node));
+        }
+
+        if edges.contains(&Edge::Left) {
+            result_node = Node::LeftPadding(n, Box::new(result_node));
+        }
+
+        result_node
     }
 
     pub fn align_right(self) -> Node<Content, Ctx> {

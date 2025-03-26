@@ -51,17 +51,17 @@ impl<'glyph> ResolvedGlyph<'glyph> {
     }
 }
 
-impl<'source, 'glyph> ResolvedLine<'source, 'glyph> {
+impl<'source> ResolvedLine<'source, '_> {
     pub fn bounds(&self) -> &Rect {
         &self.bounds
     }
 
     pub fn line(&self) -> &'source str {
-        &self.line_text
+        self.line_text
     }
 }
 
-impl<'source, 'glyph> ResolvedText<'source, 'glyph> {
+impl ResolvedText<'_, '_> {
     pub fn lines(&self) -> Iter<ResolvedLine> {
         self.lines.iter()
     }
@@ -72,16 +72,16 @@ impl<'source, 'glyph> ResolvedText<'source, 'glyph> {
 }
 
 impl Font {
-    pub fn calculate_lines<'str, 'bounds, 'font>(
+    pub fn calculate_lines<'str, 'font>(
         &'font self,
         text: &'str str,
-        bounds: &'bounds Rect,
+        bounds: &Rect,
     ) -> ResolvedText<'str, 'font> {
         let char_indices = text.char_indices();
         
         let mut context = LineResolution {
             fitting_lines: vec![],
-            bounds: bounds,
+            bounds,
             source_string: text,
             current_glyphs: vec![],
             font: self,
@@ -136,7 +136,7 @@ struct LineResolution<'source, 'font, 'bounds, 'glyph> {
     previous_starting_index: usize
 }
 
-impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'glyph> {
+impl<'glyph> LineResolution<'_, '_, '_, 'glyph> {
     fn commit_line(&mut self, index_end: Option<usize>) {
         let subline;
         
@@ -175,7 +175,7 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
 
     fn commit_glyph(&mut self, char_index: usize, element: Ascii, element_glyph: &'glyph Glyph, element_size: Size) {
         if element.is_space() {
-            self.insert_element(ResolvedGlyphElement::Space);
+            self.current_glyphs.push(ResolvedGlyphElement::Space);
             
             return
         }
@@ -201,14 +201,6 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
         );
 
         self.current_glyphs.push(ResolvedGlyphElement::Glyph(resolved_glyph));
-    }
-
-    fn insert_element(&mut self, element: ResolvedGlyphElement<'glyph>) {
-        if self.current_glyphs.is_empty() && element == ResolvedGlyphElement::Space {
-            return;
-        }
-
-        self.current_glyphs.push(element);
     }
 
     pub fn next_glyph_x(&self) -> usize {
@@ -287,7 +279,7 @@ impl<'source, 'bounds, 'font, 'glyph> LineResolution<'source, 'font, 'bounds, 'g
 
     fn content_width(&self) -> usize {
         let lines = &self.fitting_lines;
-        let widths = lines.into_iter()
+        let widths = lines.iter()
             .map(|line| line.bounds().width);
 
         widths.max().unwrap_or_default()

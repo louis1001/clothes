@@ -30,9 +30,9 @@ static THREE_BY_THREE_MONO: Lazy<Font> = Lazy::new(|| {
         glyphs: three_by_three_glyphs(),
         size: Size::new(square_size, square_size),
         unknown_glyph: three_by_three_unknown_glyph(),
-        space_width: space_width,
+        space_width,
         line_spacing: 1,
-        character_spacing: character_spacing
+        character_spacing
     }
 });
 
