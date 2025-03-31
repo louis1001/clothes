@@ -1,9 +1,11 @@
 use std::{collections::HashSet, fmt::Debug};
+use crate::fonts::Font;
+
 use super::{alignment, sizing};
 
 #[derive(Clone, Debug)]
 pub enum SizedItem<Content: Clone + Default + Debug> {
-    Text(String, Content),
+    Text(String, Content, &'static Font),
     Width(usize, SizedNode<Content>),
     Height(usize, SizedNode<Content>),
     TopPadding(usize, SizedNode<Content>),

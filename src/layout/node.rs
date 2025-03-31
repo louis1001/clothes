@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use crate::fonts::Font;
 use crate::layout::alignment::Edge;
 
 use super::alignment;
@@ -6,7 +7,7 @@ use super::geometry;
 
 #[derive(Clone, Debug)]
 pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> {
-    Text(String, Content),
+    Text(String, &'static Font, Content),
     Width(usize, Box<Node<Content, Ctx>>),
     Height(usize, Box<Node<Content, Ctx>>),
     TopPadding(usize, Box<Node<Content, Ctx>>),
@@ -34,11 +35,15 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
 
 impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> Node<Content, Ctx> {
     pub fn plain_text(text: &str) -> Node<Content, Ctx> {
-        Node::Text(text.to_string(), Content::default())
+        Node::Text(text.to_string(), Font::three_by_three(), Content::default())
     }
 
     pub fn text(text: &str, content: Content) -> Node<Content, Ctx> {
-        Node::Text(text.to_string(), content)
+        Node::Text(text.to_string(), Font::three_by_three(), content)
+    }
+
+    pub fn text_with_font(text: &str, content: Content, font: &'static Font) -> Node<Content, Ctx> {
+        Node::Text(text.to_string(), font, content)
     }
 
     pub fn center(self) -> Node<Content, Ctx> {

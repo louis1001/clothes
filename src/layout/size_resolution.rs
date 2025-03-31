@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
-use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing::{self}}, rendering::DrawCommand};
+use crate::{layout::{self, alignment::Edge, sizing::{self}}, rendering::DrawCommand};
 
 use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
 
 // Calculate size
+#[derive(Default)]
 pub struct SizeCalculator;
 
 impl SizeCalculator {
@@ -13,8 +14,7 @@ impl SizeCalculator {
         use sizing::Sizing::*;
 
         match container_node {
-            Text(t, content) => {
-                let font = Font::singleton();
+            Text(t, font, content) => {
                 let resolved_text = font.calculate_lines(t, bounds);
                 let width = resolved_text.size().width;
                 let height = resolved_text.size().height;
@@ -29,7 +29,7 @@ impl SizeCalculator {
                 // TODO: Introduce `Flexible` item sizing to handle better text sizing.
                 let sizing = sizing::ItemSizing::new(Static(width), Static(height));
 
-                SizedNode::new(SizedItem::Text(t.clone(), content.clone()), sizing)
+                SizedNode::new(SizedItem::Text(t.clone(), content.clone(), font), sizing)
             }
             VCenter(node) => {
                 let resolved = Self::resolve_size(node, bounds, context);
@@ -325,6 +325,7 @@ impl SizeCalculator {
 }
 
 // Resolve size
+#[derive(Default)]
 pub struct SizeResolver;
 
 impl SizeResolver {
@@ -333,10 +334,7 @@ impl SizeResolver {
         let layout = sized_node.clone();
 
         match *layout.node {
-            Text(text, content) => {
-                // TODO: Handle current content (foreground, background style)
-                let font = Font::singleton();
-
+            Text(text, content, font) => {
                 let mut commands = vec![];
                 let resolved_text = font.calculate_lines(&text, bounds);
 
@@ -348,7 +346,11 @@ impl SizeResolver {
                         line.bounds().size().height
                     );
 
-                    let mut emit_draw_command = |glyph: &Glyph, size: &Size, offset: &Size| {
+                    for resolved_glyph in &line.glyphs {
+                        let glyph = resolved_glyph.glyph();
+                        let size = resolved_glyph.size();
+                        let offset = resolved_glyph.offset();
+
                         commands.push(DrawCommand::Bitmap(
                             glyph.map(|b| if b { Some(content.clone()) } else { None }),
                             Rect::new(
@@ -358,14 +360,6 @@ impl SizeResolver {
                                 size.height,
                             ),
                         ));
-                    };
-
-                    for resolved_glyph in &line.glyphs {
-                        emit_draw_command(
-                            resolved_glyph.glyph(),
-                            resolved_glyph.size(),
-                            resolved_glyph.offset(),
-                        );
                     }
                 }
 

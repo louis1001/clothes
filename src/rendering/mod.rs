@@ -1,4 +1,4 @@
-mod canvas;
+pub mod canvas;
 
 use crate::layout::geometry::Rect;
 

@@ -1,6 +1,6 @@
 use std::{char::TryFromCharError, error::Error, fmt::Display};
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
 pub struct Ascii(pub u8);
 
 impl Ascii {

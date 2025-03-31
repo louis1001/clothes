@@ -88,7 +88,7 @@ impl Vector {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Size {
     pub width: usize,
     pub height: usize
@@ -108,6 +108,10 @@ impl Size {
 
     pub fn to_vector(&self) -> Vector {
         Vector::new(self.width as i64, self.height as i64)
+    }
+
+    pub fn scaled(self, scale: usize) -> Size {
+        Size { width: self.width * scale, height: self.height * scale }
     }
 }
 

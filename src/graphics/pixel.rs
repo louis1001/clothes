@@ -56,7 +56,7 @@ impl RGBPixel {
     }
 
     pub fn green() -> Self {
-        RGBPixel { r: 0.7, g: 0.95, b: 0.4 }
+        RGBPixel { r: 0.4, g: 0.68, b: 0.2 }
     }
 
     pub fn blue() -> Self {
