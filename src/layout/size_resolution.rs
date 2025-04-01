@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{layout::{self, alignment::Edge, sizing::{self}}, rendering::DrawCommand};
+use crate::{layout::{self, alignment::Edge, node::DetachedBehavior, sizing::{self}}, rendering::DrawCommand};
 
 use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
 
@@ -319,6 +319,15 @@ impl SizeCalculator {
                 let node = node(context);
 
                 Self::resolve_size(&node, bounds, context)
+            }
+
+            Detached(wrapped_content, alignment, behavior, content) => {
+                let wrapped_sized = Self::resolve_size(&*wrapped_content, bounds, context);
+                let content_sized = Self::resolve_size(&content, bounds, context);
+
+                let wrapped_sizing = wrapped_sized.sizing.clone();
+
+                SizedNode::new(SizedItem::Detached(wrapped_sized, alignment.clone(), behavior.clone(), content_sized), wrapped_sizing)
             }
         }
     }
@@ -713,6 +722,25 @@ impl SizeResolver {
 
                     Self::resolve_draw_commands(&node, size)
                 }).collect::<Vec<_>>()
+            }
+            Detached(wrapped_content, _, behavior, node) => {
+                // FIXME: Alignment not handled
+                let mut detached_commands= Self::resolve_draw_commands(&node, bounds);
+                let mut wrapped_commands = Self::resolve_draw_commands(&wrapped_content, bounds);
+                let mut result = vec![];
+
+                match behavior {
+                    DetachedBehavior::Background => {
+                        result.append(&mut detached_commands);
+                        result.append(&mut wrapped_commands);
+                    }
+                    DetachedBehavior::Overlay => {
+                        result.append(&mut wrapped_commands);
+                        result.append(&mut detached_commands);
+                    }
+                }
+
+                result
             }
         }
     }

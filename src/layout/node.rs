@@ -4,6 +4,11 @@ use crate::layout::alignment::Edge;
 
 use super::alignment;
 use super::geometry;
+#[derive(Clone, Debug, PartialEq)]
+pub enum DetachedBehavior {
+    Overlay,
+    Background
+}
 
 #[derive(Clone, Debug)]
 pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> {
@@ -21,6 +26,7 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
     VTopAlign(Box<Node<Content, Ctx>>),
     HLeftAlign(Box<Node<Content, Ctx>>),
     Background(Content, Box<Node<Content, Ctx>>),
+    Detached(Box<Node<Content, Ctx>>, alignment::Alignment, DetachedBehavior, Box<Node<Content, Ctx>>),
     TopBorder(usize, Content, Box<Node<Content, Ctx>>),
     BottomBorder(usize, Content, Box<Node<Content, Ctx>>),
     LeftBorder(usize, Content, Box<Node<Content, Ctx>>),
@@ -180,5 +186,13 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         }
 
         Node::VerticalStack(alignment::HorizontalAlignment::Center, spacing, rows)
+    }
+
+    pub fn as_background(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+        Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Background, Box::new(content()))
+    }
+
+    pub fn as_overlay(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+        Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Overlay, Box::new(content()))
     }
 }

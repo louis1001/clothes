@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Debug};
 use crate::fonts::Font;
 
-use super::{alignment, sizing};
+use super::{alignment, node::DetachedBehavior, sizing};
 
 #[derive(Clone, Debug)]
 pub enum SizedItem<Content: Clone + Default + Debug> {
@@ -19,6 +19,7 @@ pub enum SizedItem<Content: Clone + Default + Debug> {
     VTopAlign(SizedNode<Content>),
     HLeftAlign(SizedNode<Content>),
     Background(Content, SizedNode<Content>),
+    Detached(SizedNode<Content>, alignment::Alignment, DetachedBehavior, SizedNode<Content>),
     Border(usize, Content, HashSet<alignment::Edge>, SizedNode<Content>),
 
     VerticalStack(alignment::HorizontalAlignment, usize, Vec<SizedNode<Content>>),
