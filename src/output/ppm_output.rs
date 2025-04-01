@@ -72,7 +72,7 @@ impl PpmOutput for Canvas<TwoBitPixel> {
 
 impl PpmOutput for Canvas<RGBPixel> {
     fn header(&self) -> String {
-        format!("P3\n{} {}\n{}", self.width(), self.height(), self.max_value() - 1)
+        format!("P3\n{} {}\n{}", self.width(), self.height(), self.max_value())
     }
 
     fn pixel_row(&self, y: usize) -> String {
@@ -81,9 +81,9 @@ impl PpmOutput for Canvas<RGBPixel> {
         for x in 0..self.width() {
             let pixel = self.get_at(x, y).cloned().unwrap_or_default();
 
-            let r = Self::map(pixel.r(), self.max_value());
-            let g = Self::map(pixel.g(), self.max_value());
-            let b = Self::map(pixel.b(), self.max_value());
+            let r = pixel.r();
+            let g = pixel.g();
+            let b = pixel.b();
 
             output.push_str(&format!("{r} {g} {b}"));
 
@@ -96,10 +96,6 @@ impl PpmOutput for Canvas<RGBPixel> {
 
 impl Canvas<RGBPixel> {
     fn max_value(&self) -> usize {
-        256
-    }
-
-    fn map(n: f64, target: usize) -> usize {
-        (n * target as f64).floor().abs() as usize
+        255
     }
 }
