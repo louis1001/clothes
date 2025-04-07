@@ -393,7 +393,23 @@ impl SizeCalculator {
 
                 let wrapped_sizing = wrapped_sized.sizing.clone();
 
-                SizedNode::new(SizedItem::Detached(wrapped_sized, alignment.clone(), behavior.clone(), content_sized), wrapped_sizing)
+                SizedNode::new(
+                    SizedItem::Detached(
+                        wrapped_sized,
+                        alignment.clone(),
+                        behavior.clone(),
+                        content_sized,
+                    ),
+                    wrapped_sizing,
+                )
+            }
+            Shape(shape, shape_behavior, content) => {
+                let sizing = ItemSizing::new(Sizing::Flexible(0), Sizing::Flexible(0));
+
+                SizedNode::new(
+                    SizedItem::Shape(shape.clone(), shape_behavior.clone(), content.clone()),
+                    sizing,
+                )
             }
         }
     }
@@ -894,6 +910,12 @@ impl SizeResolver {
 
                 result
             }
+            Shape(shape, shape_behavior, content) => match shape_behavior {
+                ShapeBehavior::Fill => vec![DrawCommand::FillShape(bounds.clone(), shape, content)],
+                ShapeBehavior::Stroke(n) => {
+                    vec![DrawCommand::StrokeShape(bounds.clone(), n, shape, content)]
+                }
+            },
         }
     }
 }

@@ -204,3 +204,40 @@ impl<Item: Clone> Matrix<Item> {
         &mut self.data[index]
     }
 }
+
+// TODO: This should be done in floating point later
+#[derive(Clone, Debug)]
+pub struct CornerRadius {
+    pub top_left: usize,
+    pub top_right: usize,
+    pub bottom_left: usize,
+    pub bottom_right: usize
+}
+
+impl CornerRadius {
+    pub fn new(top_left: usize, top_right: usize, bottom_left: usize, bottom_right: usize) -> CornerRadius {
+        CornerRadius { top_left, top_right, bottom_left, bottom_right }
+    }
+
+    pub fn all(radius: usize) -> CornerRadius {
+        CornerRadius { top_left: radius, top_right: radius, bottom_left: radius, bottom_right: radius }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Shape {
+    Rectangle,
+    RoundedRectangle(CornerRadius),
+    Ellipse,
+    Capsule
+}
+
+impl Shape {
+    pub fn rounded_rect(radius: usize) -> Shape {
+        Shape::RoundedRectangle(CornerRadius::all(radius))
+    }
+
+    pub fn rounded_rect_with_corners(top_left: usize, top_right: usize, bottom_left: usize, bottom_right: usize) -> Shape {
+        Shape::RoundedRectangle(CornerRadius::new(top_left, top_right, bottom_left, bottom_right))
+    }
+}

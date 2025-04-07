@@ -1,5 +1,12 @@
+use std::u8;
+
 use super::DrawCommand;
-use crate::{graphics::canvas::Canvas, layout::geometry::{Rect, Size}};
+use crate::{
+    graphics::canvas::Canvas,
+    layout::geometry::{CornerRadius, Rect, Shape, Size},
+};
+
+use tiny_skia;
 
 pub trait Drawable {
     type Content: Clone + Default;
@@ -15,7 +22,9 @@ pub trait Drawable {
         for command in commands {
             match command {
                 DrawCommand::TextLine(_, _, _) => {
-                    unimplemented!("At the moment, text is being rendered as glyphs through BitMap.");
+                    unimplemented!(
+                        "At the moment, text is being rendered as glyphs through BitMap."
+                    );
                 }
                 DrawCommand::FillRect(bounds, content) => {
                     self.fill_rect(bounds, content);
@@ -101,14 +110,282 @@ pub trait Drawable {
                         }
                     }
                 }
+                DrawCommand::StrokeShape(bounds, stroke_width, shape, content) => {
+                    self.stroke_shape(bounds, stroke_width.clone(), shape, content.clone());
+                }
+                DrawCommand::FillShape(bounds, shape, content) => {
+                    self.fill_shape(bounds, shape, content.clone());
+                }
             }
         }
     }
-}
 
-// impl<Content: Clone + Default> Canvas<Content> {
-    
-// }
+    fn stroke_shape(
+        &mut self,
+        bounds: &Rect,
+        stroke_width: usize,
+        shape: &Shape,
+        content: Self::Content,
+    ) {
+        if bounds.width == 0 || bounds.height == 0 {
+            return;
+        }
+
+        match shape {
+            Shape::Rectangle => {
+                let top_line = Rect::new(bounds.x, bounds.y, bounds.width, 1);
+                let right_line = Rect::new(bounds.max_x(), bounds.y, 1, bounds.height);
+                let bottom_line = Rect::new(bounds.x, bounds.y, bounds.width, 1);
+                let left_line = Rect::new(bounds.x, bounds.y, 1, bounds.height);
+
+                self.fill_rect(&top_line, &content);
+                self.fill_rect(&right_line, &content);
+                self.fill_rect(&bottom_line, &content);
+                self.fill_rect(&left_line, &content);
+            }
+            Shape::RoundedRectangle(corner_radius) => {
+                self.stroke_path(
+                    bounds,
+                    stroke_width,
+                    self.rounded_rectangle_path(bounds, corner_radius),
+                    &content,
+                );
+            }
+            Shape::Ellipse => {
+                self.stroke_path(bounds, stroke_width, self.ellipse_path(bounds), &content);
+            }
+            Shape::Capsule => {
+                self.stroke_path(bounds, stroke_width, self.capsule_path(bounds), &content)
+            }
+        }
+    }
+
+    fn stroke_path(
+        &mut self,
+        bounds: &Rect,
+        stroke_width: usize,
+        path: tiny_skia::Path,
+        content: &Self::Content,
+    ) {
+        // FIXME: stroke width is a little broken, because skia draws within the bounds provided,
+        // but because the stroke goes on either side of the path, half of it ends up outside of the bounds.
+        // maybe scaling the bounds by the corner radius amount, and then scaling the drawing back.
+        let mut paint = tiny_skia::Paint::default();
+        paint.set_color_rgba8(u8::MAX, u8::MAX, u8::MAX, u8::MAX);
+        paint.anti_alias = false;
+
+        let mut stroke = tiny_skia::Stroke::default();
+        stroke.width = stroke_width as f32;
+        stroke.line_cap = tiny_skia::LineCap::Round;
+
+        let mut pixmap = tiny_skia::Pixmap::new(bounds.width as u32, bounds.height as u32).unwrap();
+        pixmap.stroke_path(
+            &path,
+            &paint,
+            &stroke,
+            tiny_skia::Transform::identity(),
+            None,
+        );
+
+        let pixels = pixmap.pixels();
+
+        let x = bounds.x as usize;
+        let y = bounds.y as usize;
+
+        for i in 0..pixels.len() {
+            let pixel = pixels[i];
+            let color = pixel.demultiply();
+
+            if color.red() == 0 && color.green() == 0 && color.blue() == 0 && color.alpha() == 0 {
+                // Not filled in. Skip
+                continue;
+            }
+
+            let dx = i % bounds.width as usize;
+            let dy = i / bounds.width as usize;
+
+            let x = x + dx;
+            let y = y + dy;
+
+            self.write_pixel(content, x, y);
+        }
+    }
+
+    fn fill_shape(&mut self, bounds: &Rect, shape: &Shape, content: Self::Content) {
+        if bounds.width == 0 || bounds.height == 0 {
+            return;
+        }
+
+        match shape {
+            Shape::Rectangle => {
+                self.fill_rect(&bounds, &content);
+            }
+            Shape::RoundedRectangle(corner_radius) => {
+                self.fill_path(
+                    bounds,
+                    self.rounded_rectangle_path(bounds, corner_radius),
+                    &content,
+                );
+            }
+            Shape::Ellipse => {
+                self.fill_path(bounds, self.ellipse_path(bounds), &content);
+            }
+            Shape::Capsule => self.fill_path(bounds, self.capsule_path(bounds), &content),
+        }
+    }
+
+    fn fill_path(&mut self, bounds: &Rect, path: tiny_skia::Path, content: &Self::Content) {
+        let mut paint = tiny_skia::Paint::default();
+        paint.set_color_rgba8(u8::MAX, u8::MAX, u8::MAX, u8::MAX);
+        let mut pixmap = tiny_skia::Pixmap::new(bounds.width as u32, bounds.height as u32).unwrap();
+        pixmap.fill_path(
+            &path,
+            &paint,
+            tiny_skia::FillRule::Winding,
+            tiny_skia::Transform::identity(),
+            None,
+        );
+
+        let pixels = pixmap.pixels();
+
+        let x = bounds.x as usize;
+        let y = bounds.y as usize;
+
+        for i in 0..pixels.len() {
+            let pixel = pixels[i];
+            let color = pixel.demultiply();
+
+            if color.red() == 0 && color.green() == 0 && color.blue() == 0 && color.alpha() == 0 {
+                // Not filled in. Skip
+                continue;
+            }
+
+            let dx = i % bounds.width as usize;
+            let dy = i / bounds.width as usize;
+
+            let x = x + dx;
+            let y = y + dy;
+
+            self.write_pixel(content, x, y);
+        }
+    }
+
+    fn ellipse_path(&self, bounds: &Rect) -> tiny_skia::Path {
+        let skia_bounds =
+            tiny_skia::Rect::from_xywh(0.0, 0.0, bounds.width as f32, bounds.height as f32)
+                .expect("Bounds should be all valid at this point");
+
+        let mut path_builder = tiny_skia::PathBuilder::new();
+        path_builder.push_oval(skia_bounds);
+
+        path_builder.finish().expect("Path should build")
+    }
+
+    fn rounded_rectangle_path(&self, bounds: &Rect, corners: &CornerRadius) -> tiny_skia::Path {
+        let skia_bounds =
+            tiny_skia::Rect::from_xywh(0.0, 0.0, bounds.width as f32, bounds.height as f32)
+                .expect("Bounds should be all valid at this point");
+
+        // There's some jankiness correction needed, because when reaching the right or bottom edge,
+        // the pixel get drawn outside of the bounds.
+        let jankiness_correction = 0.5;
+
+        let mut path_builder = tiny_skia::PathBuilder::new();
+
+        let initial_x = skia_bounds.x() + corners.top_left as f32;
+        let initial_y = 0.0 + jankiness_correction;
+
+        path_builder.move_to(initial_x as f32, initial_y as f32);
+
+        let top_right_start_x = skia_bounds.width() - corners.top_right as f32;
+
+        path_builder.line_to(top_right_start_x, skia_bounds.top());
+
+        if corners.top_right != 0 {
+            let top_right_control_x = skia_bounds.width();
+            let top_right_control_y = skia_bounds.top() + jankiness_correction;
+
+            let top_right_end_x = skia_bounds.width() - jankiness_correction;
+            let top_right_end_y = skia_bounds.top() + corners.top_right as f32;
+
+            path_builder.quad_to(
+                top_right_control_x,
+                top_right_control_y,
+                top_right_end_x,
+                top_right_end_y,
+            );
+        }
+
+        let bottom_right_start_y = skia_bounds.height() - corners.bottom_right as f32;
+        let bottom_right_start_x = skia_bounds.right() - jankiness_correction;
+
+        path_builder.line_to(bottom_right_start_x, bottom_right_start_y);
+
+        if corners.bottom_right != 0 {
+            let bottom_right_control_x = skia_bounds.width();
+            let bottom_right_control_y = skia_bounds.height();
+
+            let bottom_right_end_x = skia_bounds.width() - corners.bottom_right as f32;
+            let bottom_right_end_y = skia_bounds.height() - jankiness_correction;
+
+            path_builder.quad_to(
+                bottom_right_control_x,
+                bottom_right_control_y,
+                bottom_right_end_x,
+                bottom_right_end_y,
+            );
+        }
+
+        let bottom_left_start_y = skia_bounds.height() - jankiness_correction;
+        let bottom_left_start_x = skia_bounds.left() + corners.bottom_left as f32;
+
+        path_builder.line_to(bottom_left_start_x, bottom_left_start_y);
+
+        if corners.bottom_left != 0 {
+            let bottom_left_control_x = skia_bounds.left() + jankiness_correction;
+            let bottom_left_control_y = skia_bounds.height();
+
+            let bottom_left_end_x = skia_bounds.left() + jankiness_correction;
+            let bottom_left_end_y = skia_bounds.bottom() - corners.bottom_left as f32;
+
+            path_builder.quad_to(
+                bottom_left_control_x,
+                bottom_left_control_y,
+                bottom_left_end_x,
+                bottom_left_end_y,
+            );
+        }
+
+        let top_left_start_x = skia_bounds.left() + jankiness_correction;
+        let top_left_start_y = skia_bounds.top() + corners.top_left as f32;
+
+        path_builder.line_to(top_left_start_x, top_left_start_y);
+
+        if corners.top_left != 0 {
+            let top_left_control_x = skia_bounds.left() + jankiness_correction;
+            let top_left_control_y = skia_bounds.top();
+
+            let top_left_end_x = skia_bounds.left() + corners.top_left as f32;
+            let top_left_end_y = skia_bounds.top() + jankiness_correction;
+
+            path_builder.quad_to(
+                top_left_control_x,
+                top_left_control_y,
+                top_left_end_x,
+                top_left_end_y,
+            );
+        }
+
+        path_builder.finish().expect("Path building should work.")
+    }
+
+    fn capsule_path(&self, bounds: &Rect) -> tiny_skia::Path {
+        let short_length = bounds.width.min(bounds.height);
+        let corner_radius = 1 + short_length / 2;
+
+        self.rounded_rectangle_path(bounds, &CornerRadius::all(corner_radius))
+    }
+}
 
 impl<Content: Clone + Default> Drawable for Canvas<Content> {
     type Content = Content;

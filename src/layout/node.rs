@@ -4,6 +4,14 @@ use crate::layout::alignment::Edge;
 
 use super::alignment;
 use super::geometry;
+use super::geometry::Shape;
+
+#[derive(Clone, Debug)]
+pub enum ShapeBehavior {
+    Stroke(usize),
+    Fill
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum DetachedBehavior {
     Overlay,
@@ -36,7 +44,9 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<Node<Content, Ctx>>),
 
     // DrawCanvas(fn(&mut Ctx, &Rect)->crate::canvas::TextCanvas),
-    WithContext(fn(&Ctx)->Node<Content, Ctx>)
+    WithContext(fn(&Ctx)->Node<Content, Ctx>),
+    
+    Shape(Shape, ShapeBehavior, Content)
 }
 
 impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> Node<Content, Ctx> {
