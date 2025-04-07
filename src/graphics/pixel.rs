@@ -1,17 +1,9 @@
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub enum TwoBitPixel {
-    #[default]
-    Zero,
-    One
-}
+pub struct TwoBitPixel(pub bool);
 
 impl From<bool> for TwoBitPixel {
     fn from(value: bool) -> Self {
-        if value {
-            TwoBitPixel::One
-        } else {
-            TwoBitPixel::Zero
-        }
+        Self(value)
     }
 }
 
@@ -19,7 +11,13 @@ impl From<bool> for TwoBitPixel {
 pub struct RGBPixel {
     r: u8,
     g: u8,
-    b: u8
+    b: u8,
+}
+
+impl RGBPixel {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        RGBPixel { r, g, b }
+    }
 }
 
 impl RGBPixel {
@@ -38,29 +36,51 @@ impl RGBPixel {
 
 impl RGBPixel {
     pub fn brightness(&self) -> f64 {
-        0.299 * (self.r() as f64 / 255.0) + 0.587 * (self.g() as f64 / 255.0) + 0.114 * (self.b() as f64 / 255.0)
+        0.299 * (self.r() as f64 / 255.0)
+            + 0.587 * (self.g() as f64 / 255.0)
+            + 0.114 * (self.b() as f64 / 255.0)
     }
 }
 
 impl RGBPixel {
     pub fn white() -> Self {
-        RGBPixel { r: 0xff, g: 0xfa, b: 0xf6 }
+        RGBPixel {
+            r: 0xff,
+            g: 0xfa,
+            b: 0xf6,
+        }
     }
 
     pub fn black() -> Self {
-        RGBPixel { r: 0x4c, g: 0x4c, b: 0x73 }
+        RGBPixel {
+            r: 0x4c,
+            g: 0x4c,
+            b: 0x73,
+        }
     }
-    
+
     pub fn red() -> Self {
-        RGBPixel { r: 0xf0, g: 0x65, b: 0x19 }
+        RGBPixel {
+            r: 0xf0,
+            g: 0x65,
+            b: 0x19,
+        }
     }
 
     pub fn green() -> Self {
-        RGBPixel { r: 0x66, g: 0xae, b: 0x33 }
+        RGBPixel {
+            r: 0x66,
+            g: 0xae,
+            b: 0x33,
+        }
     }
 
     pub fn blue() -> Self {
-        RGBPixel { r: 0x66, g: 0x59, b: 0xfa }
+        RGBPixel {
+            r: 0x66,
+            g: 0x59,
+            b: 0xfa,
+        }
     }
 }
 

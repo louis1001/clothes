@@ -4,20 +4,21 @@ use super::Canvas;
 
 pub trait PixelConvertion<FromPixel> {}
 
-pub struct CanvasConversion<'from, FromPixel: Clone + Default, ToPixel: Clone + Default>  {
+pub struct CanvasConversion<'from, FromPixel: Clone + Default, ToPixel: Clone + Default> {
     source_canvas: &'from Canvas<FromPixel>,
-    conversion: Box<dyn Fn(FromPixel) -> ToPixel>
+    conversion: Box<dyn Fn(FromPixel) -> ToPixel>,
 }
 
 impl<'from, FromPixel: Clone + Default, ToPixel: Clone + Default>
-    From<CanvasConversion<'from, FromPixel, ToPixel>> for Canvas<ToPixel> {
+    From<CanvasConversion<'from, FromPixel, ToPixel>> for Canvas<ToPixel>
+{
     fn from(value: CanvasConversion<'from, FromPixel, ToPixel>) -> Self {
         let source_canvas = value.source_canvas;
 
-        let new_pixels = source_canvas.contents
-            .iter().map(|x| {
-                (value.conversion)(x.clone())
-            })
+        let new_pixels = source_canvas
+            .contents
+            .iter()
+            .map(|x| (value.conversion)(x.clone()))
             .collect();
 
         Canvas::create_with_content(new_pixels, &source_canvas.size)
@@ -31,10 +32,8 @@ impl Canvas<RGBPixel> {
             conversion: Box::new({
                 let min_value = threshold;
 
-                move |pixel| {
-                    (pixel.brightness() > min_value).into()
-                }
-            })
+                move |pixel| (pixel.brightness() > min_value).into()
+            }),
         }
     }
 }
@@ -42,8 +41,8 @@ impl Canvas<RGBPixel> {
 impl From<TwoBitPixel> for RGBPixel {
     fn from(value: TwoBitPixel) -> Self {
         match value {
-            TwoBitPixel::One => RGBPixel::white(),
-            TwoBitPixel::Zero => RGBPixel::black()
+            TwoBitPixel(true) => RGBPixel::white(),
+            TwoBitPixel(false) => RGBPixel::black(),
         }
     }
 }
@@ -56,9 +55,7 @@ impl From<Canvas<RGBPixel>> for Canvas<TwoBitPixel> {
 
 impl From<Canvas<TwoBitPixel>> for Canvas<RGBPixel> {
     fn from(value: Canvas<TwoBitPixel>) -> Self {
-        let new_pixels = value.contents.iter()
-            .map(|x| (*x).into())
-            .collect();
+        let new_pixels = value.contents.iter().map(|x| (*x).into()).collect();
 
         Canvas::create_with_content(new_pixels, &value.size)
     }
@@ -69,7 +66,7 @@ fn convert_rgb_canvas_to_twobit() {
     let mut rgb_canvas: Canvas<RGBPixel> = Canvas::create(5, 5);
 
     rgb_canvas.clear_with(&RGBPixel::white());
-    
+
     let twobit_canvas: Canvas<TwoBitPixel> = rgb_canvas.convert_to(0.5).into();
 
     let new_rgb_canvas: Canvas<RGBPixel> = twobit_canvas.into();
