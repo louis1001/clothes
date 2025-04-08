@@ -1,12 +1,26 @@
 use std::collections::HashSet;
+use crate::fonts::Font;
 use crate::layout::alignment::Edge;
 
 use super::alignment;
 use super::geometry;
+use super::geometry::Shape;
+
+#[derive(Clone, Debug)]
+pub enum ShapeBehavior {
+    Stroke(usize),
+    Fill
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DetachedBehavior {
+    Overlay,
+    Background
+}
 
 #[derive(Clone, Debug)]
 pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> {
-    Text(String, Content),
+    Text(String, &'static Font, Content),
     Width(usize, Box<Node<Content, Ctx>>),
     Height(usize, Box<Node<Content, Ctx>>),
     TopPadding(usize, Box<Node<Content, Ctx>>),
@@ -20,6 +34,7 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
     VTopAlign(Box<Node<Content, Ctx>>),
     HLeftAlign(Box<Node<Content, Ctx>>),
     Background(Content, Box<Node<Content, Ctx>>),
+    Detached(Box<Node<Content, Ctx>>, alignment::Alignment, DetachedBehavior, Box<Node<Content, Ctx>>),
     TopBorder(usize, Content, Box<Node<Content, Ctx>>),
     BottomBorder(usize, Content, Box<Node<Content, Ctx>>),
     LeftBorder(usize, Content, Box<Node<Content, Ctx>>),
@@ -29,16 +44,22 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<Node<Content, Ctx>>),
 
     // DrawCanvas(fn(&mut Ctx, &Rect)->crate::canvas::TextCanvas),
-    WithContext(fn(&Ctx)->Node<Content, Ctx>)
+    WithContext(fn(&Ctx)->Node<Content, Ctx>),
+    
+    Shape(Shape, ShapeBehavior, Content)
 }
 
 impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> Node<Content, Ctx> {
     pub fn plain_text(text: &str) -> Node<Content, Ctx> {
-        Node::Text(text.to_string(), Content::default())
+        Node::Text(text.to_string(), Font::three_by_three(), Content::default())
     }
 
     pub fn text(text: &str, content: Content) -> Node<Content, Ctx> {
-        Node::Text(text.to_string(), content)
+        Node::Text(text.to_string(), Font::three_by_three(), content)
+    }
+
+    pub fn text_with_font(text: &str, content: Content, font: &'static Font) -> Node<Content, Ctx> {
+        Node::Text(text.to_string(), font, content)
     }
 
     pub fn center(self) -> Node<Content, Ctx> {
@@ -175,5 +196,13 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         }
 
         Node::VerticalStack(alignment::HorizontalAlignment::Center, spacing, rows)
+    }
+
+    pub fn as_background(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+        Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Background, Box::new(content()))
+    }
+
+    pub fn as_overlay(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+        Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Overlay, Box::new(content()))
     }
 }

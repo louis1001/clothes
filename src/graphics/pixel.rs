@@ -1,66 +1,86 @@
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub enum TwoBitPixel {
-    #[default]
-    Zero,
-    One
-}
+pub struct TwoBitPixel(pub bool);
 
 impl From<bool> for TwoBitPixel {
     fn from(value: bool) -> Self {
-        if value {
-            TwoBitPixel::One
-        } else {
-            TwoBitPixel::Zero
-        }
+        Self(value)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RGBPixel {
-    r: f64,
-    g: f64,
-    b: f64
+    r: u8,
+    g: u8,
+    b: u8,
 }
 
 impl RGBPixel {
-    pub fn r(&self) -> f64 {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        RGBPixel { r, g, b }
+    }
+}
+
+impl RGBPixel {
+    pub fn r(&self) -> u8 {
         self.r
     }
 
-    pub fn g(&self) -> f64 {
+    pub fn g(&self) -> u8 {
         self.g
     }
 
-    pub fn b(&self) -> f64 {
+    pub fn b(&self) -> u8 {
         self.b
     }
 }
 
 impl RGBPixel {
     pub fn brightness(&self) -> f64 {
-        0.299 * self.r() + 0.587 * self.g() + 0.114 * self.b()
+        0.299 * (self.r() as f64 / 255.0)
+            + 0.587 * (self.g() as f64 / 255.0)
+            + 0.114 * (self.b() as f64 / 255.0)
     }
 }
 
 impl RGBPixel {
     pub fn white() -> Self {
-        RGBPixel { r: 1., g: 0.98, b: 0.96 }
+        RGBPixel {
+            r: 0xff,
+            g: 0xfa,
+            b: 0xf6,
+        }
     }
 
     pub fn black() -> Self {
-        RGBPixel { r: 0.3, g: 0.3, b: 0.45 }
+        RGBPixel {
+            r: 0x4c,
+            g: 0x4c,
+            b: 0x73,
+        }
     }
-    
+
     pub fn red() -> Self {
-        RGBPixel { r: 0.94, g: 0.4, b: 0.1 }
+        RGBPixel {
+            r: 0xf0,
+            g: 0x65,
+            b: 0x19,
+        }
     }
 
     pub fn green() -> Self {
-        RGBPixel { r: 0.7, g: 0.95, b: 0.4 }
+        RGBPixel {
+            r: 0x66,
+            g: 0xae,
+            b: 0x33,
+        }
     }
 
     pub fn blue() -> Self {
-        RGBPixel { r: 0.4, g: 0.35, b: 0.98 }
+        RGBPixel {
+            r: 0x66,
+            g: 0x59,
+            b: 0xfa,
+        }
     }
 }
 

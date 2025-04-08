@@ -1,24 +1,40 @@
-use std::fmt::Debug;
+use std::{cmp::Ordering, fmt::Debug};
 
-use crate::{fonts::{Font, Glyph}, layout::{self, alignment::Edge, geometry::Size, sizing::{self}}, rendering::DrawCommand};
+use crate::{
+    layout::{
+        self,
+        alignment::Edge,
+        node::{DetachedBehavior, ShapeBehavior},
+        sizing::{self, ItemSizing, Sizing},
+    },
+    rendering::DrawCommand,
+};
 
-use super::{geometry::Rect, node::Node, sized_node::{SizedNode, SizedItem}};
+use super::{
+    geometry::Rect,
+    node::Node,
+    sized_node::{SizedItem, SizedNode},
+};
 
 // Calculate size
+#[derive(Default)]
 pub struct SizeCalculator;
 
 impl SizeCalculator {
-    pub fn resolve_size<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug>(container_node: &Node<Content, Ctx>, bounds: &Rect, context: &mut Ctx) -> SizedNode<Content> {
-        use Node::*;
+    pub fn resolve_size<Content: Clone + Default + Debug, Ctx: Clone + std::fmt::Debug>(
+        container_node: &Node<Content, Ctx>,
+        bounds: &Rect,
+        context: &mut Ctx,
+    ) -> SizedNode<Content> {
         use sizing::Sizing::*;
+        use Node::*;
 
         match container_node {
-            Text(t, content) => {
-                let font = Font::singleton();
+            Text(t, font, content) => {
                 let resolved_text = font.calculate_lines(t, bounds);
                 let width = resolved_text.size().width;
                 let height = resolved_text.size().height;
-                
+
                 // FIXME: Having a layered layout causes this code to be called way too many times.
                 // maybe my approach with borders and paddings is a little too much.
                 // Right now, I calculate the content of (for example) a TopPadding with no alterations,
@@ -29,7 +45,7 @@ impl SizeCalculator {
                 // TODO: Introduce `Flexible` item sizing to handle better text sizing.
                 let sizing = sizing::ItemSizing::new(Static(width), Static(height));
 
-                SizedNode::new(SizedItem::Text(t.clone(), content.clone()), sizing)
+                SizedNode::new(SizedItem::Text(t.clone(), content.clone(), font), sizing)
             }
             VCenter(node) => {
                 let resolved = Self::resolve_size(node, bounds, context);
@@ -47,7 +63,10 @@ impl SizeCalculator {
 
                 let min_height = content_size.vertical.min_content_size();
 
-                let sizing = sizing::ItemSizing { horizontal: content_size.horizontal, vertical: Greedy(min_height) };
+                let sizing = sizing::ItemSizing {
+                    horizontal: content_size.horizontal,
+                    vertical: Greedy(min_height),
+                };
 
                 SizedNode::new(SizedItem::VBottomAlign(resolved), sizing)
             }
@@ -57,7 +76,10 @@ impl SizeCalculator {
 
                 let min_width = content_size.horizontal.min_content_size();
 
-                let sizing = sizing::ItemSizing { horizontal: Greedy(min_width), vertical: content_size.vertical };
+                let sizing = sizing::ItemSizing {
+                    horizontal: Greedy(min_width),
+                    vertical: content_size.vertical,
+                };
 
                 SizedNode::new(SizedItem::HCenter(resolved), sizing)
             }
@@ -67,7 +89,10 @@ impl SizeCalculator {
 
                 let min_width = content_size.horizontal.min_content_size();
 
-                let sizing = sizing::ItemSizing { horizontal: Greedy(min_width), vertical: content_size.vertical };
+                let sizing = sizing::ItemSizing {
+                    horizontal: Greedy(min_width),
+                    vertical: content_size.vertical,
+                };
 
                 SizedNode::new(SizedItem::HRightAlign(resolved), sizing)
             }
@@ -77,7 +102,10 @@ impl SizeCalculator {
 
                 let min_height = content_size.vertical.min_content_size();
 
-                let sizing = sizing::ItemSizing { horizontal: content_size.horizontal, vertical: Greedy(min_height) };
+                let sizing = sizing::ItemSizing {
+                    horizontal: content_size.horizontal,
+                    vertical: Greedy(min_height),
+                };
 
                 SizedNode::new(SizedItem::VTopAlign(resolved), sizing)
             }
@@ -87,7 +115,10 @@ impl SizeCalculator {
 
                 let min_width = content_size.horizontal.min_content_size();
 
-                let sizing = sizing::ItemSizing { horizontal: Greedy(min_width), vertical: content_size.vertical };
+                let sizing = sizing::ItemSizing {
+                    horizontal: Greedy(min_width),
+                    vertical: content_size.vertical,
+                };
 
                 SizedNode::new(SizedItem::HLeftAlign(resolved), sizing)
             }
@@ -114,15 +145,13 @@ impl SizeCalculator {
             TopPadding(n, node) | BottomPadding(n, node) => {
                 let resolved = Self::resolve_size(node, bounds, context);
                 let mut frame = resolved.sizing.clone();
-                
+
                 frame.vertical.clamped_add(*n);
 
-                let make_node = |n: usize, node: SizedNode<Content>|{
-                    match container_node {
-                        TopPadding(_, _) => SizedItem::TopPadding(n, node),
-                        BottomPadding(_, _) => SizedItem::BottomPadding(n, node),
-                        _ => unreachable!()
-                    }
+                let make_node = |n: usize, node: SizedNode<Content>| match container_node {
+                    TopPadding(_, _) => SizedItem::TopPadding(n, node),
+                    BottomPadding(_, _) => SizedItem::BottomPadding(n, node),
+                    _ => unreachable!(),
                 };
 
                 if frame.vertical.min_content_size() > bounds.height {
@@ -144,14 +173,12 @@ impl SizeCalculator {
                 let resolved = Self::resolve_size(node, bounds, context);
                 let mut frame = resolved.sizing.clone();
 
-                let make_node = |n: usize, node: SizedNode<Content>|{
-                    match container_node {
-                        LeftPadding(_, _) => SizedItem::LeftPadding(n, node),
-                        RightPadding(_, _) => SizedItem::RightPadding(n, node),
-                        _ => unreachable!()
-                    }
+                let make_node = |n: usize, node: SizedNode<Content>| match container_node {
+                    LeftPadding(_, _) => SizedItem::LeftPadding(n, node),
+                    RightPadding(_, _) => SizedItem::RightPadding(n, node),
+                    _ => unreachable!(),
                 };
-                
+
                 frame.horizontal.clamped_add(*n);
                 if frame.horizontal.min_content_size() > bounds.width {
                     // recalculate with less space
@@ -194,7 +221,10 @@ impl SizeCalculator {
                     frame.vertical.clamped_add(added_height);
                 }
 
-                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Top), resolved_content), frame)
+                SizedNode::new(
+                    SizedItem::Border(*n, c.clone(), dictionary!(Edge::Top), resolved_content),
+                    frame,
+                )
             }
             BottomBorder(n, c, node) => {
                 let outer_bounds = bounds;
@@ -215,7 +245,10 @@ impl SizeCalculator {
                     frame.vertical.clamped_add(added_height);
                 }
 
-                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Bottom), resolved_content), frame)
+                SizedNode::new(
+                    SizedItem::Border(*n, c.clone(), dictionary!(Edge::Bottom), resolved_content),
+                    frame,
+                )
             }
             LeftBorder(n, c, node) => {
                 let outer_bounds = bounds;
@@ -224,7 +257,7 @@ impl SizeCalculator {
 
                 let added_width = *n;
                 frame.horizontal.clamped_add(*n);
-                
+
                 if frame.horizontal.min_content_size() > outer_bounds.width {
                     // recalculate with less space
                     let mut bounds = outer_bounds.clone();
@@ -236,7 +269,10 @@ impl SizeCalculator {
                     frame.horizontal.clamped_add(added_width);
                 }
 
-                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Left), resolved_content), frame)
+                SizedNode::new(
+                    SizedItem::Border(*n, c.clone(), dictionary!(Edge::Left), resolved_content),
+                    frame,
+                )
             }
             RightBorder(n, c, node) => {
                 let outer_bounds = bounds;
@@ -257,12 +293,18 @@ impl SizeCalculator {
                     frame.horizontal.clamped_add(added_width);
                 }
 
-                SizedNode::new(SizedItem::Border(*n, c.clone(), dictionary!(Edge::Right), resolved_content), frame)
+                SizedNode::new(
+                    SizedItem::Border(*n, c.clone(), dictionary!(Edge::Right), resolved_content),
+                    frame,
+                )
             }
 
-            VerticalStack(alignment, spacing,  nodes) => {
+            VerticalStack(alignment, spacing, nodes) => {
                 let spacing_sizing = spacing * nodes.len().saturating_sub(1);
-                let mut result = sizing::ItemSizing { horizontal: Static(0), vertical: Static(spacing_sizing) };
+                let mut result = sizing::ItemSizing {
+                    horizontal: Static(0),
+                    vertical: Static(spacing_sizing),
+                };
                 let mut bounds = bounds.clone();
                 bounds.height = bounds.height.saturating_sub(spacing_sizing);
                 let mut resolved_children: Vec<SizedNode<_>> = vec![];
@@ -273,23 +315,37 @@ impl SizeCalculator {
                     result.horizontal = match result.horizontal {
                         Static(j) => match node_sizing.horizontal {
                             Static(i) => Static(i.max(j)),
-                            Greedy(i) => Greedy(i.max(j))
-                        }
+                            Greedy(i) => Greedy(i.max(j)),
+                            Flexible(i) => Flexible(i.max(j)),
+                        },
                         Greedy(j) => {
                             let i = node_sizing.horizontal.min_content_size();
                             Greedy(i.max(j))
                         }
+                        Flexible(j) => match node_sizing.horizontal {
+                            Static(i) | Flexible(i) => Flexible(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                        },
                     };
 
-                    result.vertical.clamped_accumulate_constrained(&node_sizing.vertical, bounds.height);
+                    result
+                        .vertical
+                        .clamped_accumulate_constrained(&node_sizing.vertical, bounds.height);
                     resolved_children.push(resolved_node);
                 }
 
-                SizedNode::new(SizedItem::VerticalStack(alignment.clone(), *spacing, resolved_children), result)
+                SizedNode::new(
+                    SizedItem::VerticalStack(alignment.clone(), *spacing, resolved_children),
+                    result,
+                )
             }
             HorizontalStack(alignment, spacing, nodes) => {
                 let spacing_sizing = spacing * nodes.len().saturating_sub(1);
-                let mut result = sizing::ItemSizing { horizontal: Static(spacing_sizing), vertical: Static(0) };let mut bounds = bounds.clone();
+                let mut result = sizing::ItemSizing {
+                    horizontal: Static(spacing_sizing),
+                    vertical: Static(0),
+                };
+                let mut bounds = bounds.clone();
                 bounds.width -= spacing_sizing;
 
                 let mut resolved_children = vec![];
@@ -300,43 +356,79 @@ impl SizeCalculator {
                     result.vertical = match result.vertical {
                         Static(j) => match node_sizing.vertical {
                             Static(i) => Static(i.max(j)),
-                            Greedy(i) => Greedy(i.max(j))
-                        }
+                            Greedy(i) => Greedy(i.max(j)),
+                            Flexible(i) => Flexible(i.max(j)),
+                        },
                         Greedy(j) => {
                             let i = node_sizing.vertical.min_content_size();
                             Greedy(i.max(j))
                         }
+                        Flexible(j) => match node_sizing.vertical {
+                            Static(i) | Flexible(i) => Flexible(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                        },
                     };
 
-                    result.horizontal.clamped_accumulate_constrained(&node_sizing.horizontal, bounds.width);
+                    result
+                        .horizontal
+                        .clamped_accumulate_constrained(&node_sizing.horizontal, bounds.width);
 
                     resolved_children.push(resolved_node);
                 }
 
-                SizedNode::new(SizedItem::HorizontalStack(alignment.clone(), *spacing, resolved_children), result)
+                SizedNode::new(
+                    SizedItem::HorizontalStack(alignment.clone(), *spacing, resolved_children),
+                    result,
+                )
             }
             WithContext(node) => {
                 let node = node(context);
 
                 Self::resolve_size(&node, bounds, context)
             }
+
+            Detached(wrapped_content, alignment, behavior, content) => {
+                let wrapped_sized = Self::resolve_size(&*wrapped_content, bounds, context);
+                let content_sized = Self::resolve_size(&content, bounds, context);
+
+                let wrapped_sizing = wrapped_sized.sizing.clone();
+
+                SizedNode::new(
+                    SizedItem::Detached(
+                        wrapped_sized,
+                        alignment.clone(),
+                        behavior.clone(),
+                        content_sized,
+                    ),
+                    wrapped_sizing,
+                )
+            }
+            Shape(shape, shape_behavior, content) => {
+                let sizing = ItemSizing::new(Sizing::Flexible(0), Sizing::Flexible(0));
+
+                SizedNode::new(
+                    SizedItem::Shape(shape.clone(), shape_behavior.clone(), content.clone()),
+                    sizing,
+                )
+            }
         }
     }
 }
 
 // Resolve size
+#[derive(Default)]
 pub struct SizeResolver;
 
 impl SizeResolver {
-    pub fn resolve_draw_commands<Content: Clone + Default + Debug>(sized_node: &SizedNode<Content>, bounds: &Rect) -> Vec<DrawCommand<Content>> {
+    pub fn resolve_draw_commands<Content: Clone + Default + Debug>(
+        sized_node: &SizedNode<Content>,
+        bounds: &Rect,
+    ) -> Vec<DrawCommand<Content>> {
         use SizedItem::*;
         let layout = sized_node.clone();
 
         match *layout.node {
-            Text(text, content) => {
-                // TODO: Handle current content (foreground, background style)
-                let font = Font::singleton();
-
+            Text(text, content, font) => {
                 let mut commands = vec![];
                 let resolved_text = font.calculate_lines(&text, bounds);
 
@@ -345,10 +437,14 @@ impl SizeResolver {
                         bounds.x + line.bounds().x, // FIXME: Left align only at the moment
                         bounds.y + line.bounds().y,
                         line.bounds().size().width,
-                        line.bounds().size().height
+                        line.bounds().size().height,
                     );
 
-                    let mut emit_draw_command = |glyph: &Glyph, size: &Size, offset: &Size| {
+                    for resolved_glyph in &line.glyphs {
+                        let glyph = resolved_glyph.glyph();
+                        let size = resolved_glyph.size();
+                        let offset = resolved_glyph.offset();
+
                         commands.push(DrawCommand::Bitmap(
                             glyph.map(|b| if b { Some(content.clone()) } else { None }),
                             Rect::new(
@@ -358,14 +454,6 @@ impl SizeResolver {
                                 size.height,
                             ),
                         ));
-                    };
-
-                    for resolved_glyph in &line.glyphs {
-                        emit_draw_command(
-                            resolved_glyph.glyph(),
-                            resolved_glyph.size(),
-                            resolved_glyph.offset(),
-                        );
                     }
                 }
 
@@ -502,28 +590,52 @@ impl SizeResolver {
                 let mut commands = Self::resolve_draw_commands(&node, &frame);
 
                 if edges == layout::alignment::Edge::all() {
-                    commands.push(DrawCommand::StrokeRect(outer_bounds.clone(), n, border_style));
+                    commands.push(DrawCommand::StrokeRect(
+                        outer_bounds.clone(),
+                        n,
+                        border_style,
+                    ));
                 } else {
                     for edge in &edges {
                         let command = match edge {
                             layout::alignment::Edge::Top => {
-                                let line_bounds = Rect::new(outer_bounds.x, outer_bounds.y, outer_bounds.width, n);
-                                
+                                let line_bounds = Rect::new(
+                                    outer_bounds.x,
+                                    outer_bounds.y,
+                                    outer_bounds.width,
+                                    n,
+                                );
+
                                 DrawCommand::FillRect(line_bounds, border_style.clone())
                             }
                             layout::alignment::Edge::Right => {
-                                let line_bounds = Rect::new(outer_bounds.max_x() - n as i64, outer_bounds.y, n, outer_bounds.height);
-                                
+                                let line_bounds = Rect::new(
+                                    outer_bounds.max_x() - n as i64,
+                                    outer_bounds.y,
+                                    n,
+                                    outer_bounds.height,
+                                );
+
                                 DrawCommand::FillRect(line_bounds, border_style.clone())
                             }
                             layout::alignment::Edge::Bottom => {
-                                let line_bounds = Rect::new(outer_bounds.x, outer_bounds.max_y() - n as i64, outer_bounds.width, n);
-                                
+                                let line_bounds = Rect::new(
+                                    outer_bounds.x,
+                                    outer_bounds.max_y() - n as i64,
+                                    outer_bounds.width,
+                                    n,
+                                );
+
                                 DrawCommand::FillRect(line_bounds, border_style.clone())
                             }
                             layout::alignment::Edge::Left => {
-                                let line_bounds = Rect::new(outer_bounds.x, outer_bounds.y, n, outer_bounds.height);
-                                
+                                let line_bounds = Rect::new(
+                                    outer_bounds.x,
+                                    outer_bounds.y,
+                                    n,
+                                    outer_bounds.height,
+                                );
+
                                 DrawCommand::FillRect(line_bounds, border_style.clone())
                             }
                         };
@@ -536,32 +648,55 @@ impl SizeResolver {
             }
             VerticalStack(alignment, spacing, nodes) => {
                 let mut max_width = 0usize;
-                
+
                 let spacing_sizing = spacing * (nodes.len().saturating_sub(1));
 
                 let mut last_bounds = Rect::zero();
 
                 let mut greedy_count = 0;
+                let mut expandable_count = 0;
                 let mut static_height = spacing_sizing;
 
                 for node in &nodes {
-                    if let layout::sizing::Sizing::Static(n) = node.sizing.vertical {
-                        static_height += n;
-                    } else {
-                        greedy_count += 1;
+                    match node.sizing.vertical {
+                        Sizing::Static(n) => static_height += n,
+                        Sizing::Greedy(_) => {
+                            expandable_count += 1;
+                            greedy_count += 1;
+                        }
+                        Sizing::Flexible(_) => {
+                            expandable_count += 1;
+                        }
                     }
                 }
 
                 let mut greedy_space = bounds.height.saturating_sub(static_height);
-                let greedy_size = if greedy_count != 0 { greedy_space / greedy_count } else { 0 };
+
+                let greedy_size = if greedy_count == 0 {
+                    if expandable_count == 0 {
+                        0
+                    } else {
+                        greedy_space / expandable_count
+                    }
+                } else {
+                    greedy_space / greedy_count
+                };
 
                 let mut new_nodes = vec![];
 
                 for node in &nodes {
                     let mut n = (*node).clone();
+                    use layout::sizing::Sizing;
+
                     n.sizing.vertical = match n.sizing.vertical {
-                        layout::sizing::Sizing::Static(sz) => layout::sizing::Sizing::Static(sz),
-                        layout::sizing::Sizing::Greedy(tight) => {
+                        Sizing::Static(sz) => Sizing::Static(sz),
+                        Sizing::Flexible(sz) if greedy_count != 0 => {
+                            // When there's some greedy node, they take priority. Which means the flexible item
+                            // cannot grow.
+                            // TODO: When greedy sizing gets a max value implemented, this will need to change.
+                            Sizing::Static(sz)
+                        }
+                        Sizing::Greedy(tight) | Sizing::Flexible(tight) => {
                             greedy_space -= greedy_size;
                             let mut node_height = greedy_size;
                             if greedy_space < greedy_size {
@@ -569,7 +704,7 @@ impl SizeResolver {
                                 greedy_space = 0;
                             }
 
-                            layout::sizing::Sizing::Static(node_height.max(tight))
+                            Sizing::Static(node_height.max(tight))
                         }
                     };
 
@@ -588,7 +723,12 @@ impl SizeResolver {
                         spacing as i64
                     };
 
-                    let node_bounds = Rect::new(0, last_bounds.max_y() + spacing_offset, size.width, size.height);
+                    let node_bounds = Rect::new(
+                        0,
+                        last_bounds.max_y() + spacing_offset,
+                        size.width,
+                        size.height,
+                    );
                     last_bounds = node_bounds.clone();
 
                     if node_bounds.width > max_width {
@@ -620,13 +760,15 @@ impl SizeResolver {
                     bound
                 }).collect();
 
-                
+                nodes
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(i, node)| {
+                        let size = &final_bounds[i];
 
-                nodes.into_iter().enumerate().flat_map(|(i, node)| {
-                    let size = &final_bounds[i];
-
-                    Self::resolve_draw_commands(&node, size)
-                }).collect::<Vec<_>>()
+                        Self::resolve_draw_commands(&node, size)
+                    })
+                    .collect::<Vec<_>>()
             }
             HorizontalStack(alignment, spacing, nodes) => {
                 let mut max_height = 0usize;
@@ -636,26 +778,46 @@ impl SizeResolver {
                 let mut last_bounds = Rect::zero();
 
                 let mut greedy_count = 0;
+                let mut expandable_count = 0;
                 let mut static_width = spacing_sizing;
 
                 for node in &nodes {
-                    if let layout::sizing::Sizing::Static(n) = node.sizing.horizontal {
-                        static_width += n;
-                    } else {
-                        greedy_count += 1;
+                    match node.sizing.horizontal {
+                        Sizing::Static(n) => static_width += n,
+                        Sizing::Greedy(_) => {
+                            expandable_count += 1;
+                            greedy_count += 1;
+                        }
+                        Sizing::Flexible(_) => {
+                            expandable_count += 1;
+                        }
                     }
                 }
 
                 let mut greedy_space = bounds.width.saturating_sub(static_width);
-                let greedy_size = if greedy_count != 0 { greedy_space / greedy_count } else { 0 };
+                let greedy_size = if greedy_count == 0 {
+                    if expandable_count == 0 {
+                        0
+                    } else {
+                        greedy_space / expandable_count
+                    }
+                } else {
+                    greedy_space / greedy_count
+                };
 
                 let mut new_nodes = vec![];
 
                 for node in &nodes {
                     let mut n = node.clone();
                     n.sizing.horizontal = match n.sizing.horizontal {
-                        layout::sizing::Sizing::Static(sz) => layout::sizing::Sizing::Static(sz),
-                        layout::sizing::Sizing::Greedy(tight) => {
+                        Sizing::Static(sz) => Sizing::Static(sz),
+                        Sizing::Flexible(sz) if greedy_count != 0 => {
+                            // When there's some greedy node, they take priority. Which means the flexible item
+                            // cannot grow.
+                            // TODO: When greedy sizing gets a max value implemented, this will need to change.
+                            Sizing::Static(sz)
+                        }
+                        Sizing::Greedy(tight) | Sizing::Flexible(tight) => {
                             greedy_space -= greedy_size;
                             let mut node_width = greedy_size;
                             if greedy_space < greedy_size {
@@ -663,7 +825,7 @@ impl SizeResolver {
                                 greedy_space = 0;
                             }
 
-                            layout::sizing::Sizing::Static(node_width.max(tight))
+                            Sizing::Static(node_width.max(tight))
                         }
                     };
 
@@ -682,7 +844,12 @@ impl SizeResolver {
                         spacing as i64
                     };
 
-                    let node_bounds = Rect::new(last_bounds.max_x() + spacing_offset, 0, size.width, size.height);
+                    let node_bounds = Rect::new(
+                        last_bounds.max_x() + spacing_offset,
+                        0,
+                        size.width,
+                        size.height,
+                    );
                     last_bounds = node_bounds.clone();
 
                     if node_bounds.height > max_height {
@@ -714,12 +881,41 @@ impl SizeResolver {
                     bound
                 }).collect();
 
-                nodes.into_iter().enumerate().flat_map(|(i, node)| {
-                    let size = &final_bounds[i];
+                nodes
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(i, node)| {
+                        let size = &final_bounds[i];
 
-                    Self::resolve_draw_commands(&node, size)
-                }).collect::<Vec<_>>()
+                        Self::resolve_draw_commands(&node, size)
+                    })
+                    .collect::<Vec<_>>()
             }
+            Detached(wrapped_content, _, behavior, node) => {
+                // FIXME: Alignment not handled
+                let mut detached_commands = Self::resolve_draw_commands(&node, bounds);
+                let mut wrapped_commands = Self::resolve_draw_commands(&wrapped_content, bounds);
+                let mut result = vec![];
+
+                match behavior {
+                    DetachedBehavior::Background => {
+                        result.append(&mut detached_commands);
+                        result.append(&mut wrapped_commands);
+                    }
+                    DetachedBehavior::Overlay => {
+                        result.append(&mut wrapped_commands);
+                        result.append(&mut detached_commands);
+                    }
+                }
+
+                result
+            }
+            Shape(shape, shape_behavior, content) => match shape_behavior {
+                ShapeBehavior::Fill => vec![DrawCommand::FillShape(bounds.clone(), shape, content)],
+                ShapeBehavior::Stroke(n) => {
+                    vec![DrawCommand::StrokeShape(bounds.clone(), n, shape, content)]
+                }
+            },
         }
     }
 }

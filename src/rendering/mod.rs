@@ -1,6 +1,6 @@
-mod canvas;
+pub mod canvas;
 
-use crate::layout::geometry::Rect;
+use crate::layout::geometry::{Rect, Shape};
 
 // FIXME: Should the draw commands contain the content (pixel value or color)?
 // or can they be an environment value, to save on some memory?
@@ -9,5 +9,7 @@ pub enum DrawCommand<Content: Clone + Default> {
     TextLine(Rect, String, Content),
     FillRect(Rect, Content),
     StrokeRect(Rect, usize, Content),
-    Bitmap(Vec<Option<Content>>, Rect)
+    Bitmap(Vec<Option<Content>>, Rect),
+    StrokeShape(Rect, usize, Shape, Content),
+    FillShape(Rect, Shape, Content)
 }

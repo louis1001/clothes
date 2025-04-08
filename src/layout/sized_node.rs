@@ -1,9 +1,11 @@
 use std::{collections::HashSet, fmt::Debug};
-use super::{alignment, sizing};
+use crate::fonts::Font;
+
+use super::{alignment, geometry::Shape, node::{DetachedBehavior, ShapeBehavior}, sizing};
 
 #[derive(Clone, Debug)]
 pub enum SizedItem<Content: Clone + Default + Debug> {
-    Text(String, Content),
+    Text(String, Content, &'static Font),
     Width(usize, SizedNode<Content>),
     Height(usize, SizedNode<Content>),
     TopPadding(usize, SizedNode<Content>),
@@ -17,10 +19,13 @@ pub enum SizedItem<Content: Clone + Default + Debug> {
     VTopAlign(SizedNode<Content>),
     HLeftAlign(SizedNode<Content>),
     Background(Content, SizedNode<Content>),
+    Detached(SizedNode<Content>, alignment::Alignment, DetachedBehavior, SizedNode<Content>),
     Border(usize, Content, HashSet<alignment::Edge>, SizedNode<Content>),
 
     VerticalStack(alignment::HorizontalAlignment, usize, Vec<SizedNode<Content>>),
-    HorizontalStack(alignment::VerticalAlignment, usize, Vec<SizedNode<Content>>)
+    HorizontalStack(alignment::VerticalAlignment, usize, Vec<SizedNode<Content>>),
+
+    Shape(Shape, ShapeBehavior, Content)
 }
 
 #[derive(Clone, Debug)]

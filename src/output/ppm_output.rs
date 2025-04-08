@@ -1,4 +1,7 @@
-use crate::graphics::{canvas::Canvas, pixel::{RGBPixel, TwoBitPixel}};
+use crate::graphics::{
+    canvas::Canvas,
+    pixel::{RGBPixel, TwoBitPixel},
+};
 
 pub trait ImageSource {
     type Pixel;
@@ -27,7 +30,6 @@ pub trait PpmOutput: ImageSource {
     }
 }
 
-
 // Canvas implementations
 impl<Content: Default + Clone> ImageSource for Canvas<Content> {
     type Pixel = Content;
@@ -52,14 +54,13 @@ impl PpmOutput for Canvas<TwoBitPixel> {
 
     fn pixel_row(&self, y: usize) -> String {
         let mut output = String::new();
-        
+
         for x in 0..self.width() {
-            let pixel = self.get_at(x, y)
-                .unwrap_or(&TwoBitPixel::Zero);
+            let pixel = self.get_at(x, y).unwrap_or(&TwoBitPixel(false));
 
             let value = match pixel {
-                TwoBitPixel::One => '1',
-                TwoBitPixel::Zero => '0'
+                TwoBitPixel(true) => '1',
+                TwoBitPixel(false) => '0',
             };
 
             output.push(value);
@@ -72,18 +73,23 @@ impl PpmOutput for Canvas<TwoBitPixel> {
 
 impl PpmOutput for Canvas<RGBPixel> {
     fn header(&self) -> String {
-        format!("P3\n{} {}\n{}", self.width(), self.height(), self.max_value() - 1)
+        format!(
+            "P3\n{} {}\n{}",
+            self.width(),
+            self.height(),
+            self.max_value()
+        )
     }
 
     fn pixel_row(&self, y: usize) -> String {
         let mut output = String::new();
-        
+
         for x in 0..self.width() {
             let pixel = self.get_at(x, y).cloned().unwrap_or_default();
 
-            let r = Self::map(pixel.r(), self.max_value());
-            let g = Self::map(pixel.g(), self.max_value());
-            let b = Self::map(pixel.b(), self.max_value());
+            let r = pixel.r();
+            let g = pixel.g();
+            let b = pixel.b();
 
             output.push_str(&format!("{r} {g} {b}"));
 
@@ -96,10 +102,6 @@ impl PpmOutput for Canvas<RGBPixel> {
 
 impl Canvas<RGBPixel> {
     fn max_value(&self) -> usize {
-        256
-    }
-
-    fn map(n: f64, target: usize) -> usize {
-        (n * target as f64).floor().abs() as usize
+        255
     }
 }

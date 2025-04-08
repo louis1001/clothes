@@ -14,6 +14,12 @@ pub enum VerticalAlignment {
     Bottom
 }
 
+#[derive(Clone, Debug)]
+pub struct Alignment {
+    vertical: VerticalAlignment,
+    horizontal: HorizontalAlignment
+}
+
 #[derive(Debug, Clone, std::hash::Hash, PartialEq, Eq)]
 pub enum Edge {
     Top,
@@ -33,5 +39,18 @@ impl Edge {
 
     pub fn vertical() -> HashSet<Edge> {
         dictionary!(Edge::Top, Edge::Bottom)
+    }
+}
+
+impl Alignment {
+    pub fn center() -> Self {
+        Self { vertical: VerticalAlignment::Center, horizontal: HorizontalAlignment::Center }
+    }
+
+    pub fn top_left() -> Self {
+        Self {
+            vertical: VerticalAlignment::Top,
+            horizontal: HorizontalAlignment::Left
+        }
     }
 }
