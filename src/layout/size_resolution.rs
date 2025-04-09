@@ -946,7 +946,6 @@ impl SizeResolver {
             NormalStack(alignment, nodes) => {
                 let mut max_height = 0usize;
                 let mut max_width = 0usize;
-                
 
                 let mut raw_bounds = vec![];
                 for node in &nodes {
@@ -1016,11 +1015,43 @@ impl SizeResolver {
                     })
                     .collect::<Vec<_>>()
             }
-            Detached(wrapped_content, _, behavior, node) => {
+            Detached(wrapped_content, alignment, behavior, node) => {
                 // FIXME: Alignment not handled
-                let mut detached_commands = Self::resolve_draw_commands(&node, bounds);
-                let mut wrapped_commands = Self::resolve_draw_commands(&wrapped_content, bounds);
                 let mut result: Vec<DrawCommand<Content>> = vec![];
+                
+                let wrapped_bounds = wrapped_content.sizing.fit_into(bounds);
+                let mut content_bounds = node.sizing.fit_into(&wrapped_bounds);
+
+                match &alignment.horizontal() {
+                    layout::alignment::HorizontalAlignment::Left => { /* Already aligned to the left */}
+                    layout::alignment::HorizontalAlignment::Center => {
+                        let center = wrapped_bounds.width / 2;
+                        let start = center - content_bounds.width/2;
+                        content_bounds.x += start as i64;
+                    }
+                    layout::alignment::HorizontalAlignment::Right => {
+                        let right = wrapped_bounds.width;
+                        let start = right - content_bounds.width;
+                        content_bounds.x += start as i64;
+                    }
+                }
+
+                match &alignment.vertical() {
+                    layout::alignment::VerticalAlignment::Top => { /* Already aligned to the left */}
+                    layout::alignment::VerticalAlignment::Center => {
+                        let center = wrapped_bounds.height / 2;
+                        let start = center - content_bounds.height/2;
+                        content_bounds.y += start as i64;
+                    }
+                    layout::alignment::VerticalAlignment::Bottom => {
+                        let bottom = wrapped_bounds.height;
+                        let start = bottom - content_bounds.height;
+                        content_bounds.y += start as i64;
+                    }
+                }
+
+                let mut detached_commands = Self::resolve_draw_commands(&node, &content_bounds);
+                let mut wrapped_commands = Self::resolve_draw_commands(&wrapped_content, &wrapped_bounds);
 
                 match behavior {
                     DetachedBehavior::Background => {

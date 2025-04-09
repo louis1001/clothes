@@ -5,7 +5,7 @@ use clothes::{
     fonts::Font,
     graphics::{canvas::Canvas, pixel::RGBPixel},
     layout::{
-        alignment::{Alignment, VerticalAlignment},
+        alignment::{Alignment, HorizontalAlignment, VerticalAlignment},
         geometry::{Matrix, Shape},
         node::{Node, ShapeBehavior},
         size_resolution::{SizeCalculator, SizeResolver},
@@ -16,7 +16,7 @@ use clothes::{
 
 fn main() -> std::io::Result<()> {
     let canvas_sz = 100;
-    let mut canvas = Canvas::create(canvas_sz, canvas_sz);
+    let mut canvas = Canvas::create(canvas_sz, canvas_sz + 3 + 2);
 
     let square = |sz, color, stroke: Option<usize>| {
         let shape = Node::Shape(
@@ -45,32 +45,39 @@ fn main() -> std::io::Result<()> {
         .as_overlay(|| {
             Node::text_with_font(
                 alignment_to_text(alignment).as_str(),
-                RGBPixel::blue(),
+                RGBPixel::white(),
                 Font::four_by_five(),
             )
         })
     };
 
-    let layout = Node::grid::<(), _, _>(
-        &Matrix::with_rows(
-            &vec![
-                Alignment::top_left(),
-                Alignment::top(),
-                Alignment::top_right(),
-                Alignment::left(),
-                Alignment::center(),
-                Alignment::right(),
-                Alignment::bottom_left(),
-                Alignment::bottom(),
-                Alignment::bottom_right(),
-            ],
-            3,
-        ),
-        2,
-        example,
-    )
-    .padding_all(2)
-    .background(RGBPixel::white());
+    let layout = Node::VerticalStack(
+        HorizontalAlignment::Center,
+        1,
+        vec![
+            Node::text("Normal Stack", RGBPixel::white()).padding_top(1),
+            Node::grid::<(), _, _>(
+                &Matrix::with_rows(
+                    &vec![
+                        Alignment::top_left(),
+                        Alignment::top(),
+                        Alignment::top_right(),
+                        Alignment::left(),
+                        Alignment::center(),
+                        Alignment::right(),
+                        Alignment::bottom_left(),
+                        Alignment::bottom(),
+                        Alignment::bottom_right(),
+                    ],
+                    3,
+                ),
+                2,
+                example,
+            )
+            .padding_all(2)
+            .background(RGBPixel::black()),
+        ],
+    );
 
     let sized = SizeCalculator::resolve_size(&layout, &canvas.bounds(), &mut ());
     let draw_commands = SizeResolver::resolve_draw_commands(&sized, &canvas.bounds());
