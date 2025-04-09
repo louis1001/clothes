@@ -381,6 +381,58 @@ impl SizeCalculator {
                     result,
                 )
             }
+            NormalStack(alignment, nodes) => {
+                let mut result = sizing::ItemSizing {
+                    horizontal: Static(0),
+                    vertical: Static(0),
+                };
+
+                let mut resolved_children = vec![];
+
+                for node in nodes {
+                    let resolved_node = Self::resolve_size(node, &bounds, context);
+                    let node_sizing = resolved_node.sizing.clone();
+                    
+                    result.vertical = match result.vertical {
+                        Static(j) => match node_sizing.vertical {
+                            Static(i) => Static(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                            Flexible(i) => Flexible(i.max(j)),
+                        },
+                        Greedy(j) => {
+                            let i = node_sizing.vertical.min_content_size();
+                            Greedy(i.max(j))
+                        }
+                        Flexible(j) => match node_sizing.vertical {
+                            Static(i) | Flexible(i) => Flexible(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                        },
+                    };
+
+                    result.horizontal = match result.horizontal {
+                        Static(j) => match node_sizing.horizontal {
+                            Static(i) => Static(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                            Flexible(i) => Flexible(i.max(j)),
+                        },
+                        Greedy(j) => {
+                            let i = node_sizing.horizontal.min_content_size();
+                            Greedy(i.max(j))
+                        }
+                        Flexible(j) => match node_sizing.horizontal {
+                            Static(i) | Flexible(i) => Flexible(i.max(j)),
+                            Greedy(i) => Greedy(i.max(j)),
+                        },
+                    };
+
+                    resolved_children.push(resolved_node);
+                }
+
+                SizedNode::new(
+                    SizedItem::NormalStack(alignment.clone(), resolved_children),
+                    result,
+                )
+            }
             WithContext(node) => {
                 let node = node(context);
 
@@ -891,11 +943,84 @@ impl SizeResolver {
                     })
                     .collect::<Vec<_>>()
             }
+            NormalStack(alignment, nodes) => {
+                let mut max_height = 0usize;
+                let mut max_width = 0usize;
+                
+
+                let mut raw_bounds = vec![];
+                for node in &nodes {
+                    let size = node.sizing.fit_into(bounds);
+
+                    let node_bounds = Rect::new(
+                        0,
+                        0,
+                        size.width,
+                        size.height,
+                    );
+
+                    if node_bounds.height > max_height {
+                        max_height = node_bounds.height;
+                    }
+
+                    if node_bounds.width > max_width {
+                        max_width = node_bounds.width;
+                    }
+
+                    raw_bounds.push(node_bounds);
+                }
+
+                let final_bounds: Vec<_> = raw_bounds.into_iter().map(|mut bound| {
+                    match &alignment.vertical() {
+                        layout::alignment::VerticalAlignment::Top => { /* Already aligned to the top */}
+                        layout::alignment::VerticalAlignment::Center => {
+                            let center = max_height / 2;
+                            let start = center - bound.height/2;
+                            bound.y = start as i64;
+                        }
+                        layout::alignment::VerticalAlignment::Bottom => {
+                            let bottom = max_height;
+                            let start = bottom - bound.height;
+                            bound.y = start as i64;
+                        }
+                    }
+
+                    match &alignment.horizontal() {
+                        layout::alignment::HorizontalAlignment::Left => { /* Already aligned to the left */}
+                        layout::alignment::HorizontalAlignment::Center => {
+                            let center = max_width / 2;
+                            let start = center - bound.width/2;
+                            bound.x = start as i64;
+                        }
+                        layout::alignment::HorizontalAlignment::Right => {
+                            let right = max_width;
+                            let start = right - bound.width;
+                            bound.x = start as i64;
+                        }
+                    }
+
+                    // move from 0 based bounds to the actual frame of the container
+                    bound.x += bounds.x;
+                    bound.y += bounds.y;
+
+                    bound
+                }).collect();
+
+                nodes
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(i, node)| {
+                        let size = &final_bounds[i];
+
+                        Self::resolve_draw_commands(&node, size)
+                    })
+                    .collect::<Vec<_>>()
+            }
             Detached(wrapped_content, _, behavior, node) => {
                 // FIXME: Alignment not handled
                 let mut detached_commands = Self::resolve_draw_commands(&node, bounds);
                 let mut wrapped_commands = Self::resolve_draw_commands(&wrapped_content, bounds);
-                let mut result = vec![];
+                let mut result: Vec<DrawCommand<Content>> = vec![];
 
                 match behavior {
                     DetachedBehavior::Background => {

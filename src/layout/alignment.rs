@@ -20,6 +20,16 @@ pub struct Alignment {
     horizontal: HorizontalAlignment
 }
 
+impl Alignment {
+    pub fn vertical(&self) -> &VerticalAlignment {
+        &self.vertical
+    }
+
+    pub fn horizontal(&self) -> &HorizontalAlignment {
+        &self.horizontal
+    }
+}
+
 #[derive(Debug, Clone, std::hash::Hash, PartialEq, Eq)]
 pub enum Edge {
     Top,
@@ -51,6 +61,55 @@ impl Alignment {
         Self {
             vertical: VerticalAlignment::Top,
             horizontal: HorizontalAlignment::Left
+        }
+    }
+
+    pub fn top_right() -> Self {
+        Self {
+            vertical: VerticalAlignment::Top,
+            horizontal: HorizontalAlignment::Right
+        }
+    }
+
+    pub fn bottom_left() -> Self {
+        Self {
+            vertical: VerticalAlignment::Bottom,
+            horizontal: HorizontalAlignment::Left
+        }
+    }
+
+    pub fn bottom_right() -> Self {
+        Self {
+            vertical: VerticalAlignment::Bottom,
+            horizontal: HorizontalAlignment::Right
+        }
+    }
+
+    pub fn top() -> Self {
+        Self {
+            vertical: VerticalAlignment::Top,
+            horizontal: HorizontalAlignment::Center
+        }
+    }
+    
+    pub fn left() -> Self {
+        Self {
+            vertical: VerticalAlignment::Center,
+            horizontal: HorizontalAlignment::Left
+        }
+    }
+
+    pub fn right() -> Self {
+        Self {
+            vertical: VerticalAlignment::Center,
+            horizontal: HorizontalAlignment::Right
+        }
+    }
+
+    pub fn bottom() -> Self {
+        Self {
+            vertical: VerticalAlignment::Bottom,
+            horizontal: HorizontalAlignment::Center
         }
     }
 }

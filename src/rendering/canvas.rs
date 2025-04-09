@@ -133,10 +133,10 @@ pub trait Drawable {
 
         match shape {
             Shape::Rectangle => {
-                let top_line = Rect::new(bounds.x, bounds.y, bounds.width, 1);
-                let right_line = Rect::new(bounds.max_x(), bounds.y, 1, bounds.height);
-                let bottom_line = Rect::new(bounds.x, bounds.y, bounds.width, 1);
-                let left_line = Rect::new(bounds.x, bounds.y, 1, bounds.height);
+                let top_line = Rect::new(bounds.x, bounds.y, bounds.width, stroke_width);
+                let right_line = Rect::new(bounds.max_x() - stroke_width as i64, bounds.y, stroke_width, bounds.height);
+                let bottom_line = Rect::new(bounds.x, bounds.max_y() - stroke_width as i64, bounds.width, stroke_width);
+                let left_line = Rect::new(bounds.x, bounds.y, stroke_width, bounds.height);
 
                 self.fill_rect(&top_line, &content);
                 self.fill_rect(&right_line, &content);

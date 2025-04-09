@@ -42,6 +42,7 @@ pub enum Node<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt:
 
     VerticalStack(alignment::HorizontalAlignment, usize, Vec<Node<Content, Ctx>>),
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<Node<Content, Ctx>>),
+    NormalStack(alignment::Alignment, Vec<Node<Content, Ctx>>),
 
     // DrawCanvas(fn(&mut Ctx, &Rect)->crate::canvas::TextCanvas),
     WithContext(fn(&Ctx)->Node<Content, Ctx>),
@@ -177,7 +178,7 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         Node::HorizontalStack(alignment::VerticalAlignment::Center, 0, nodes)
     }
 
-    pub fn grid<State, Item: Clone>(items: &geometry::Matrix<Item>, spacing: usize, view: fn(&Item)->Node<Content, Ctx>) -> Node<Content, Ctx> {
+    pub fn grid<State, Item: Clone, View: Fn(&Item) -> Node<Content, Ctx>>(items: &geometry::Matrix<Item>, spacing: usize, view: View) -> Node<Content, Ctx> {
         let mut rows = vec![];
 
         let mut row = vec![];
@@ -198,11 +199,11 @@ impl<Content: Clone + Default + std::fmt::Debug, Ctx: Clone + std::fmt::Debug> N
         Node::VerticalStack(alignment::HorizontalAlignment::Center, spacing, rows)
     }
 
-    pub fn as_background(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+    pub fn as_background<DetachedContent: Fn() -> Node<Content, Ctx>>(self, content: DetachedContent) -> Node<Content, Ctx> {
         Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Background, Box::new(content()))
     }
 
-    pub fn as_overlay(self, content: fn() -> Node<Content, Ctx>) -> Node<Content, Ctx> {
+    pub fn as_overlay<DetachedContent: Fn() -> Node<Content, Ctx>>(self, content: DetachedContent) -> Node<Content, Ctx> {
         Node::Detached(Box::new(self), alignment::Alignment::center(), DetachedBehavior::Overlay, Box::new(content()))
     }
 }

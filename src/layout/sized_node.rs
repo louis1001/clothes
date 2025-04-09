@@ -24,6 +24,7 @@ pub enum SizedItem<Content: Clone + Default + Debug> {
 
     VerticalStack(alignment::HorizontalAlignment, usize, Vec<SizedNode<Content>>),
     HorizontalStack(alignment::VerticalAlignment, usize, Vec<SizedNode<Content>>),
+    NormalStack(alignment::Alignment, Vec<SizedNode<Content>>),
 
     Shape(Shape, ShapeBehavior, Content)
 }
