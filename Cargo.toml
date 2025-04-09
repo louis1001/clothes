@@ -2,6 +2,20 @@
 name = "clothes"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+
+description = "A declarative UI library inspired by SwiftUI"
+authors = ["louis1001 <contact@louis1001.dev>"]
+
+readme = "README.md"
+homepage = "https://github.com/louis1001/clothes"
+repository = "https://github.com/louis1001/clothes"
+
+categories = ["gui", "graphics", "rendering::engine", "visualization"]
+
+exclude = [
+    "**/main.rs",
+]
 
 [dependencies]
 once_cell = "1.21.1"
