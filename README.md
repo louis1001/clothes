@@ -5,3 +5,7 @@ A layout engine inspired by SwiftUI and declarative UI frameworks. Based on the 
 This readme is a **work in progress**. I'll add to it when I've prepared enough examples •u•
 
 ## Example results
+
+![NormalStack example](https://github.com/louis1001/clothes/blob/master/assets/depth_stack_example.jpg?raw=true)
+![Shapes example](https://github.com/louis1001/clothes/blob/master/assets/shapes_example.jpg?raw=true)
+![Swatches example](https://github.com/louis1001/clothes/blob/master/assets/simple_example.jpg?raw=true)
