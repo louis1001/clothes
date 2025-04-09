@@ -6,9 +6,7 @@ use std::{
 use clothes::{
     graphics::{canvas::Canvas, pixel::RGBPixel},
     layout::{
-        geometry::{CornerRadius, Shape},
-        node::{Node, ShapeBehavior},
-        size_resolution::{SizeCalculator, SizeResolver},
+        alignment::Alignment, geometry::{CornerRadius, Shape}, node::{Node, ShapeBehavior}, size_resolution::{SizeCalculator, SizeResolver}
     },
     output::ppm_output::PpmOutput,
     rendering::canvas::Drawable,
@@ -19,22 +17,19 @@ extern crate clothes;
 fn main() -> Result<()> {
     let layout = Node::vertical_stack(vec![
         Node::plain_text("Hey!"),
-        Node::horizontal_stack(vec![
-            Node::vertical_stack(vec![
-                Node::Shape(Shape::Ellipse, ShapeBehavior::Stroke(1), RGBPixel::green())
-                    .width(30)
-                    .height(30),
-                Node::Shape(Shape::Ellipse, ShapeBehavior::Fill, RGBPixel::black())
-                    .width(30)
-                    .height(10),
-            ]),
+        Node::NormalStack(Alignment::top(), vec![
             Node::Shape(
                 Shape::RoundedRectangle(CornerRadius::new(5, 5, 5, 20)),
-                ShapeBehavior::Stroke(1),
+                ShapeBehavior::Fill,
                 RGBPixel::blue(),
             )
             .padding_all(1),
+            Node::vertical_stack(vec![
+                Node::Shape(Shape::Ellipse, ShapeBehavior::Stroke(1), RGBPixel::green()),
+                Node::Shape(Shape::Ellipse, ShapeBehavior::Fill, RGBPixel::black()),
+            ]).padding_horizontal(6).padding_vertical(3),
         ])
+        .width(60)
         .center(),
     ])
     .padding_all(2)
